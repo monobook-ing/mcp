@@ -164,8 +164,8 @@
 
     .price-pill {
       height: 68px;
-      min-width: 180px;
-      padding: 0 20px;
+      min-width: 140px;
+      padding: 0 24px;
       border-radius: 22px;
       display: flex;
       align-items: center;
@@ -178,12 +178,20 @@
       font-weight: 950;
       letter-spacing: -0.4px;
       font-size: 38px;
+      gap: 4px;
+    }
+
+    .price-pill span {
+      font-size: 19px;
+      font-weight: 400;
+      opacity: 0.9;
     }
 
     .cta-buttons {
       flex: 1;
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 12px;
     }
 
@@ -202,6 +210,7 @@
 
     .reserve {
       flex: 1;
+      max-width: 280px;
       background: rgba(255, 255, 255, .94);
       color: var(--btnText);
     }
@@ -364,7 +373,7 @@
       margin: 6px 0 0 0;
       color: #4b5563;
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 500;
     }
 
     .details-section {
@@ -521,7 +530,7 @@
     .details-empty {
       color: #6b7280;
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 500;
       margin: 0;
     }
 
@@ -632,8 +641,8 @@
       background: rgba(17, 24, 39, .02);
       color: #374151;
       font-size: 16px;
-      line-height: 1.6;
-      font-weight: 650;
+      line-height: 1.5;
+      font-weight: 400;
       min-height: 100px;
     }
 
@@ -1126,7 +1135,13 @@
       const { beds, baths } = parseBedConfig(unit.bed_config);
       const imgUrl = sanitizeUrl(unit.image_url || (unit.images && unit.images[0]) || '');
       const priceDisplayValue = formatPrice(unit.price_per_night, unit.currency_code);
-      const maxGuests = unit.max_guests || '';
+      const maxGuestsCount = unit.max_guests || 0;
+      const requestedGuests = Number(bookingContext.guests || 2);
+
+      let guestsBadgeText = `${ICONS.guest} Up to ${escapeHtml(maxGuestsCount)}`;
+      if (requestedGuests === 2) {
+        guestsBadgeText = `${ICONS.check} Matches your request`;
+      }
 
       const reserveParams = {
         unit_id: unit.id,
@@ -1139,7 +1154,7 @@
         <article class="room-card" data-unit-id="${escapeHtml(unit.id)}" onclick="onMoreDetails('${escapeHtml(unit.id)}')">
           <div class="room-media">
             ${imgUrl ? `<style>.room-card[data-unit-id="${escapeHtml(unit.id)}"] .room-media::before{background-image:url('${imgUrl}');}</style>` : ''}
-            ${maxGuests ? `<span class="guests-badge">${ICONS.guest} Up to ${escapeHtml(maxGuests)}</span>` : ''}
+            ${maxGuestsCount ? `<span class="guests-badge">${guestsBadgeText}</span>` : ''}
             <div class="content">
               <div>
                 <h1 class="title">${escapeHtml(unit.name)}</h1>
@@ -1152,7 +1167,7 @@
               </div>
 
               <div class="cta-row">
-                <div class="price-pill">${escapeHtml(priceDisplayValue)}/night</div>
+                <div class="price-pill"><div class="price">${escapeHtml(priceDisplayValue)}<span>/night</span></div></div>
                 <div class="cta-buttons">
                   <button class="reserve" type="button" aria-label="Reserve ${escapeHtml(unit.name)}" onclick='event.stopPropagation(); onReserve(${JSON.stringify(reserveParams)})'>Reserve</button>
                 </div>
