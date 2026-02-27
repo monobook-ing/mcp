@@ -54,6 +54,15 @@
         radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
         linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
     }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-repeat:no-repeat;
+      background-size:cover;
+      background-position:center;
+      pointer-events:none;
+    }
     .hero::after{
       content:"";
       position:absolute;
@@ -119,7 +128,7 @@
     }
 
     .content{
-      padding: 18px 22px 8px;
+      padding: 0;
     }
 
     .grid{
@@ -129,8 +138,8 @@
     }
 
     .panel{
-      border: 1px solid var(--border);
-      border-radius: 22px;
+/*      border: 1px solid var(--border);
+      border-radius: 22px;*/
       overflow:hidden;
       background: #fff;
     }
@@ -163,7 +172,7 @@
       white-space:nowrap;
     }
     .panel-body{
-      padding: 14px 16px;
+      padding: 0px 16px 14px 16px;
     }
 
     .kv{
@@ -171,7 +180,7 @@
       grid-template-columns: 1fr auto;
       gap: 10px 12px;
       align-items:baseline;
-      padding: 10px 0;
+      padding: 16px 0;
       border-bottom: 1px solid var(--divider);
     }
     .kv:last-child{border-bottom:none;}
@@ -431,7 +440,8 @@
       document.getElementById('root').innerHTML = `
         <main class="wrap">
           <section class="confirmation">
-            <div class="hero" role="img" aria-label="Booking image" ${imgUrl ? `style="background-image: radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%), linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%), url('${imgUrl}'); background-size: auto, auto, cover; background-position: center; background-repeat: no-repeat;"` : ''}>
+            <div class="hero" role="img" aria-label="Booking image" ${imgUrl ? `style="background:none"` : ''}>
+              ${imgUrl ? `<style>.hero::before{background-image:url('${imgUrl}') !important;}</style>` : ''}
               <div class="hero-inner">
                 <div class="hero-title">
                   <h1>${data.unit_name || 'Your Stay'}</h1>
@@ -443,7 +453,7 @@
               </div>
             </div>
 
-            <div class="content">
+            <div>
               <div class="grid">
                 <section class="panel">
                   <header class="panel-head">
@@ -490,53 +500,18 @@
                   </div>
                 </section>
               </div>
-
-              <section class="calendar-wrap" id="calendarWrap">
-                <div class="calendar-body">
-                  <div class="daybox">
-                    <p class="dow">${fmtDow(data.check_in)}</p>
-                    <p class="dom">${fmtDom(data.check_in)}</p>
-                  </div>
-                  <div class="events">
-                    <div class="event">
-                      <div class="bar"></div>
-                      <div>
-                        <h4>Check-in</h4>
-                        <p>${ciTime}</p>
-                      </div>
-                    </div>
-                    <div class="event selected">
-                      <div class="bar blue"></div>
-                      <div>
-                        <h4>Stay: ${data.unit_name} (${data.nights || '–'} nights)</h4>
-                        <p>${fmtDate(data.check_in)} – ${fmtDate(data.check_out)}</p>
-                      </div>
-                    </div>
-                    <div class="event">
-                      <div class="bar"></div>
-                      <div>
-                        <h4>Check-out</h4>
-                        <p>${coTime}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="calendar-actions">
-                  <button class="btn primary" id="addCalBtn" type="button">Add to calendar</button>
-                  <button class="btn" id="discardBtn" type="button">Discard</button>
-                </div>
-              </section>
             </div>
 
             <div class="footer">
               Free cancellation until <strong>${cancelDate}</strong> (local time). After that, cancellation may be non-refundable depending on the host's rules and timing.
             </div>
           </section>
+              
         </main>`;
 
-      // Attach calendar handlers
-      document.getElementById('addCalBtn').addEventListener('click', () => downloadICS(data));
-      document.getElementById('discardBtn').addEventListener('click', () => {
+        // Attach calendar handlers
+        document.getElementById('addCalBtn').addEventListener('click', () => downloadICS(data));
+        document.getElementById('discardBtn').addEventListener('click', () => {
         document.getElementById('calendarWrap').style.display = 'none';
       });
     }
