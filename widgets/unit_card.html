@@ -284,18 +284,23 @@
     }
 
     #detailsDialog{
-      max-width: min(1140px, calc(100% - 20px));
-      width: min(1140px, calc(100% - 20px));
+      margin: 0;
+      max-width: 100vw;
+      width: 100vw;
+      max-height: 100dvh;
+      height: 100dvh;
       padding: 0;
       overflow: hidden;
-      border-radius: 24px;
+      border: none;
+      border-radius: 0;
       background: #fff;
     }
 
     .details-shell{
-      max-height: min(88vh, 980px);
+      max-height: 100dvh;
+      min-height: 100dvh;
       overflow-y: auto;
-      padding: 22px;
+      padding: 26px;
       color: #111827;
     }
 
@@ -576,7 +581,7 @@
       font-size: 18px;
       font-weight: 900;
       cursor: pointer;
-      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+      /*box-shadow: 0 16px 30px rgba(17,24,39,.18);*/
     }
 
     .details-reserve:disabled{
@@ -626,8 +631,7 @@
       .reserve,
       .details{height: 60px; font-size: 20px;}
       .amenities{font-size: 16px;}
-      #detailsDialog{width: calc(100% - 12px);} 
-      .details-shell{padding: 16px;}
+      .details-shell{padding: 0;}
       .details-section h3{font-size: 26px;}
       .host-grid{grid-template-columns: 1fr;}
     }
@@ -640,6 +644,7 @@
       .details{flex: 1; min-width: 0; font-size: 18px;}
       .amenities{gap: 10px;}
       .divider{display:none;}
+      .details-shell{padding: 16px;}
       .details-gallery{grid-template-columns: 1fr;}
       .details-gallery-side{grid-template-columns: 1fr 1fr; grid-template-rows: 1fr;}
       .amenities-grid{grid-template-columns: 1fr;}
@@ -1015,7 +1020,7 @@
               <div class="cta-row">
                 <div class="price-pill">${escapeHtml(priceDisplay)}</div>
                 <div class="cta-buttons">
-                  <button class="details" type="button" aria-label="More details for ${escapeHtml(unit.name)}" onclick="onMoreDetails('${escapeHtml(unit.id)}')">More details</button>
+                  <button class="details" type="button" aria-label="More details for ${escapeHtml(unit.name)}" onclick="onMoreDetails('${escapeHtml(unit.id)}')">More</button>
                   <button class="reserve" type="button" aria-label="Reserve ${escapeHtml(unit.name)}" onclick='onReserve(${JSON.stringify(reserveParams)})'>Reserve</button>
                 </div>
               </div>
@@ -1108,7 +1113,7 @@
         </section>
 
         <section class="details-section" aria-label="Map section">
-          <h3>Map</h3>
+          <h3>Where you’ll be</h3>
           <p class="details-subtitle" style="margin: 0 0 12px 0;">${escapeHtml(mapInfo.label || locationLabel)}</p>
           ${mapMarkup}
         </section>
