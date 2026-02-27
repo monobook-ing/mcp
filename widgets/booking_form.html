@@ -11,7 +11,7 @@
       --text: #111827;
       --muted: #6b7280;
       --border: rgba(17,24,39,.10);
-      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      /*--shadow: 0 24px 60px rgba(0,0,0,.14);*/
       --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
       --radius: 28px;
       --cta: #111827;
@@ -708,6 +708,7 @@
 
         const params = {
           unit_id: bookingData.unit_id,
+          unit_name: bookingData.unit_name || '',
           check_in: bookingData.check_in,
           check_out: bookingData.check_out,
           guests: bookingData.guests || 1,

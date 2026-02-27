@@ -9,14 +9,18 @@
       --text:#0b1220;
       --white:#fff;
       --muted: rgba(255,255,255,.82);
-      --shadow: 0 28px 70px rgba(0,0,0,.18);
+      /*--shadow: 0 28px 70px rgba(0,0,0,.18);*/
       --shadowSoft: 0 14px 34px rgba(0,0,0,.14);
       --radius: 34px;
       --btnText: #111827;
       --focus: rgba(255,255,255,.25);
     }
 
+    html,
     *{box-sizing:border-box}
+    html{
+      background: transparent;
+    }
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
@@ -38,6 +42,13 @@
       padding: 0;
       border: 0;
       border-radius: 0;
+    }
+
+    /* Fallback spacing only when flex gap is unsupported */
+    @supports not (gap: 1rem) {
+      .room-card + .room-card{
+        margin-top: 16px;
+      }
     }
 
     .room-card{

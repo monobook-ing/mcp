@@ -350,6 +350,7 @@ def book_confirm(
     guest_phone: str,
     total_price: float,
     currency_code: str = "USD",
+    unit_name: str = "",
 ) -> dict:
     """Widget-only tool. Do not call directly from assistant chat.
     Use only after user submits the booking form."""
@@ -391,6 +392,10 @@ def book_confirm(
         .execute()
         .data
     )
+    if unit_name and unit_name.strip() != unit["name"]:
+        raise ValueError(
+            f"Unit name mismatch for unit_id '{unit_id}': expected '{unit['name']}', got '{unit_name.strip()}'."
+        )
 
     # Generate confirmation code
     confirmation_code = f"BK-{uuid.uuid4().hex[:6].upper()}"
@@ -430,6 +435,8 @@ def book_confirm(
         "currency_code": currency_code,
         "guest_name": guest_name,
         "guest_email": guest_email,
+        "guest_phone": guest_phone,
+        "image_url": unit["images"][0] if unit.get("images") else "",
     }
 
     return {

@@ -12,7 +12,7 @@
       --muted:#6b7280;
       --border: rgba(17,24,39,.10);
       --divider: rgba(17,24,39,.08);
-      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      /*--shadow: 0 24px 60px rgba(0,0,0,.14);*/
       --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
       --radius: 28px;
       --focus: rgba(17,24,39,.22);
@@ -426,11 +426,12 @@
       const coTime = data.check_out_time || '11:00';
       const cancelDate = getCancelDate(data.check_in);
       const total = formatMoney(data.total_price, data.currency_code);
+      const imgUrl = data.image_url || '';
 
       document.getElementById('root').innerHTML = `
         <main class="wrap">
           <section class="confirmation">
-            <div class="hero">
+            <div class="hero" role="img" aria-label="Booking image" ${imgUrl ? `style="background-image: radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%), linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%), url('${imgUrl}'); background-size: auto, auto, cover; background-position: center; background-repeat: no-repeat;"` : ''}>
               <div class="hero-inner">
                 <div class="hero-title">
                   <h1>${data.unit_name || 'Your Stay'}</h1>
@@ -451,12 +452,20 @@
                   </header>
                   <div class="panel-body">
                     <div class="kv">
-                      <div class="k">Guest</div>
-                      <div class="v">${data.guest_name || ''} &middot; ${data.guests || 1} guest(s)</div>
+                      <div class="k">Full name</div>
+                      <div class="v">${data.guest_name || ''}</div>
                     </div>
                     <div class="kv">
-                      <div class="k">Email</div>
+                      <div class="k">Emails</div>
                       <div class="v">${data.guest_email || ''}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">PhoneNumber</div>
+                      <div class="v">${data.guest_phone || ''}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Guests</div>
+                      <div class="v">${data.guests || 1} guest(s)</div>
                     </div>
                     <div class="kv">
                       <div class="k">Check-in</div>
