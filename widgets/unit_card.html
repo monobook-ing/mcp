@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unit Card</title>
+  <style>
+    :root{
+      --text:#0b1220;
+      --white:#fff;
+      --muted: rgba(255,255,255,.82);
+      --shadow: 0 28px 70px rgba(0,0,0,.18);
+      --shadowSoft: 0 14px 34px rgba(0,0,0,.14);
+      --radius: 34px;
+      --btnText: #111827;
+      --focus: rgba(255,255,255,.25);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: transparent;
+      color: var(--text);
+      padding: 0;
+    }
+
+    .cards-container{
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 0;
+      background: transparent;
+    }
+
+    #root{
+      background: transparent;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .room-card{
+      width: 100%;
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      position:relative;
+      background:#111;
+    }
+
+    .room-media{
+      position:relative;
+      height: 420px;
+      background:
+        radial-gradient(1200px 700px at 75% 15%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%),
+        linear-gradient(135deg, #101827 0%, #2a3f67 48%, #c89b57 100%);
+    }
+
+    .room-media::before{
+      content:"";
+      position:absolute; inset:0;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      pointer-events:none;
+    }
+
+    .room-media::after{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 100%);
+      pointer-events:none;
+    }
+
+    .content{
+      position:absolute;
+      left: 26px;
+      right: 26px;
+      bottom: 22px;
+      color: var(--white);
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+      z-index: 1;
+    }
+
+    .title{
+      margin:0;
+      font-size: clamp(28px, 3.2vw, 44px);
+      line-height:1.05;
+      letter-spacing:-.6px;
+      font-weight: 900;
+      text-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+
+    .subtitle{
+      margin:0;
+      font-size: 18px;
+      font-weight: 650;
+      color: var(--muted);
+      letter-spacing:-.2px;
+      text-shadow: 0 12px 34px rgba(0,0,0,.38);
+    }
+
+    .amenities{
+      display:flex;
+      align-items:center;
+      gap: 14px;
+      flex-wrap:wrap;
+      font-size: 18px;
+      font-weight: 650;
+      color: rgba(255,255,255,.85);
+      text-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+
+    .amenities .item{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+    }
+
+    .amenities svg{
+      width: 20px;
+      height: 20px;
+      opacity: .9;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
+    }
+
+    .divider{
+      width:1px;
+      height: 18px;
+      background: rgba(255,255,255,.28);
+      border-radius: 999px;
+      margin: 0 4px;
+    }
+
+    .cta-row{
+      display:flex;
+      gap: 16px;
+      align-items:center;
+      margin-top: 4px;
+    }
+
+    .price-pill{
+      height: 68px;
+      min-width: 180px;
+      padding: 0 20px;
+      border-radius: 22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadowSoft);
+      font-weight: 950;
+      letter-spacing: -0.4px;
+      font-size: 38px;
+    }
+
+    .reserve{
+      flex: 1;
+      height: 68px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(255,255,255,.94);
+      color: var(--btnText);
+      font-weight: 900;
+      font-size: 22px;
+      letter-spacing: -0.2px;
+      cursor:pointer;
+      box-shadow: var(--shadowSoft);
+    }
+    .reserve:hover{ transform: translateY(-1px); }
+    .reserve:active{ transform: translateY(0px); }
+    .reserve:focus{
+      outline:none;
+      box-shadow: 0 0 0 5px var(--focus), var(--shadowSoft);
+    }
+    .reserve:disabled{
+      cursor: wait;
+      opacity: .85;
+      transform: none;
+    }
+
+    .room-card::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: var(--radius);
+      pointer-events:none;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .type-badge{
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 2;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      font-weight: 700;
+      font-size: 14px;
+      text-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
+
+    .guests-badge{
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      font-weight: 700;
+      font-size: 14px;
+      text-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
+
+    .guests-badge svg{ width:16px; height:16px; }
+
+    @media (max-width: 820px){
+      .room-media{height: 380px;}
+      .content{left: 18px; right: 18px; bottom: 18px;}
+      .price-pill{min-width: 150px; height: 60px; font-size: 32px;}
+      .reserve{height: 60px; font-size: 20px;}
+      .amenities{font-size: 16px;}
+    }
+
+    @media (max-width: 560px){
+      .room-media{height: 360px;}
+      .cta-row{flex-direction:column; align-items:stretch;}
+      .price-pill{width: 100%;}
+      .reserve{width: 100%;}
+      .amenities{gap: 10px;}
+      .divider{display:none;}
+    }
+
+    #loading{
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .retry-btn{
+      margin-top: 14px;
+      border: 1px solid rgba(17,24,39,.14);
+      background: #fff;
+      color: #111827;
+      border-radius: 999px;
+      height: 40px;
+      padding: 0 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reserve-error{
+      display: none;
+      width: min(1120px, calc(100% - 24px));
+      margin: 8px auto 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(239,68,68,.10);
+      border: 1px solid rgba(239,68,68,.22);
+      color: #991b1b;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .reserve-error.show{
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="reserveError" class="reserve-error" role="alert"></div>
+  <div id="root"><div id="loading">Loading rooms...</div></div>
+
+  <script>
+    /* ── SVG Icons ── */
+    const ICONS = {
+      bed: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 10h16v8H4v-8z" stroke="white" stroke-width="2" stroke-linejoin="round"/><path d="M4 10V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M20 18v2M4 18v2" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`,
+      bath: `<svg viewBox="0 0 24 24" fill="none"><path d="M7 7a3 3 0 0 1 6 0v7" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M4 14h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2z" stroke="white" stroke-width="2" stroke-linejoin="round"/><path d="M6 21v-2M18 21v-2" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`,
+      guest: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="white" stroke-width="2"/><path d="M5 20c0-3.3 2.7-6 7-6s7 2.7 7 6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`,
+    };
+
+    const RESERVE_CALL_TIMEOUT_MS = 10000;
+    const RESERVE_CALL_ERROR_TEXT = 'Unable to open booking form. Please try Reserve Now again.';
+
+    function getReserveButton(unitId) {
+      if (!unitId) return null;
+      return document.querySelector(`.room-card[data-unit-id="${unitId}"] .reserve`);
+    }
+
+    function setReserveButtonState(unitId, opening) {
+      const btn = getReserveButton(unitId);
+      if (!btn) return;
+      btn.disabled = opening;
+      btn.textContent = opening ? 'Opening...' : 'Reserve Now';
+    }
+
+    function clearReserveError() {
+      const el = document.getElementById('reserveError');
+      if (!el) return;
+      el.textContent = '';
+      el.classList.remove('show');
+    }
+
+    function showReserveError(message) {
+      const el = document.getElementById('reserveError');
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add('show');
+    }
+
+    function isStructuredBookingPayload(data) {
+      return !!data &&
+        typeof data === 'object' &&
+        typeof data.unit_id === 'string' &&
+        typeof data.check_in === 'string' &&
+        typeof data.check_out === 'string';
+    }
+
+    function normalizeBookingPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredBookingPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    /* ── Parse bed config string like "2 bedrooms · 2 beds · 2 baths" ── */
+    function parseBedConfig(config) {
+      if (!config) return { beds: '–', baths: '–' };
+      const beds = config.match(/(\d+)\s*bed/i);
+      const baths = config.match(/(\d+)\s*bath/i);
+      return {
+        beds: beds ? beds[1] : '–',
+        baths: baths ? baths[1] : '–',
+      };
+    }
+
+    /* ── Format price ── */
+    function formatPrice(price, currency) {
+      const symbols = { USD: '$', UAH: '₴', EUR: '€' };
+      const sym = symbols[currency] || currency + ' ';
+      const num = Number(price);
+      if (num >= 1000) return sym + num.toLocaleString('en-US');
+      return sym + num;
+    }
+
+    /* ── Build a single card HTML ── */
+    function buildCard(unit, bookingContext) {
+      const { beds, baths } = parseBedConfig(unit.bed_config);
+      const imgUrl = unit.image_url || (unit.images && unit.images[0]) || '';
+      const priceDisplay = formatPrice(unit.price_per_night, unit.currency_code);
+      const hotelName = unit.hotel_name || '';
+      const unitType = unit.type || '';
+      const maxGuests = unit.max_guests || '';
+
+      return `
+        <article class="room-card" data-unit-id="${unit.id}">
+          <div class="room-media" style="${imgUrl ? `--img:url('${imgUrl}')` : ''}">
+            ${imgUrl ? `<style>.room-card[data-unit-id="${unit.id}"] .room-media::before{background-image:url('${imgUrl}');}</style>` : ''}
+            ${unitType ? `<span class="type-badge">${unitType}</span>` : ''}
+            ${maxGuests ? `<span class="guests-badge">${ICONS.guest} Up to ${maxGuests}</span>` : ''}
+            <div class="content">
+              <div>
+                <h1 class="title">${unit.name}</h1>
+                ${hotelName ? `<p class="subtitle">${hotelName}</p>` : ''}
+              </div>
+
+              <div class="amenities">
+                <span class="item">${ICONS.bed} Beds: <strong>${beds}</strong></span>
+                <span class="divider"></span>
+                <span class="item">${ICONS.bath} Baths: <strong>${baths}</strong></span>
+              </div>
+
+              <div class="cta-row">
+                <div class="price-pill">${priceDisplay}</div>
+                <button class="reserve" type="button" onclick='onReserve(${JSON.stringify({
+                  unit_id: unit.id,
+                  check_in: bookingContext.check_in || '',
+                  check_out: bookingContext.check_out || '',
+                  guests: bookingContext.guests || 2,
+                })})'>Reserve Now</button>
+              </div>
+            </div>
+          </div>
+        </article>`;
+    }
+
+    /* ── Default dates (next weekend: Friday-Sunday) ── */
+    function getDefaultDates() {
+      const now = new Date();
+      const day = now.getDay();
+      const daysUntilFri = (5 - day + 7) % 7 || 7;
+      const fri = new Date(now);
+      fri.setDate(now.getDate() + daysUntilFri);
+      const sun = new Date(fri);
+      sun.setDate(fri.getDate() + 2);
+      const fmt = d => d.toISOString().split('T')[0];
+      return { check_in: fmt(fri), check_out: fmt(sun) };
+    }
+
+    /* ── Reserve button handler ── */
+    function onReserve(params) {
+      clearReserveError();
+
+      if (!params.check_in || !params.check_out) {
+        const defaults = getDefaultDates();
+        params.check_in = params.check_in || defaults.check_in;
+        params.check_out = params.check_out || defaults.check_out;
+      }
+
+      const reserveUnitId = params.unit_id || '';
+      let reserveTimeoutId = null;
+      let reserveResultPollId = null;
+      setReserveButtonState(reserveUnitId, true);
+
+      const finishWithError = () => {
+        if (reserveTimeoutId) {
+          clearTimeout(reserveTimeoutId);
+          reserveTimeoutId = null;
+        }
+        if (reserveResultPollId) {
+          clearInterval(reserveResultPollId);
+          reserveResultPollId = null;
+        }
+        setReserveButtonState(reserveUnitId, false);
+        showReserveError(RESERVE_CALL_ERROR_TEXT);
+      };
+
+      const markReserveAccepted = () => {
+        if (reserveTimeoutId) {
+          clearTimeout(reserveTimeoutId);
+          reserveTimeoutId = null;
+        }
+        if (reserveResultPollId) {
+          clearInterval(reserveResultPollId);
+          reserveResultPollId = null;
+        }
+        setReserveButtonState(reserveUnitId, false);
+      };
+
+      reserveTimeoutId = setTimeout(() => {
+        finishWithError();
+      }, RESERVE_CALL_TIMEOUT_MS);
+
+      reserveResultPollId = setInterval(() => {
+        const payload = normalizeBookingPayload(null);
+        if (
+          payload &&
+          payload.unit_id === reserveUnitId &&
+          payload.check_in === params.check_in &&
+          payload.check_out === params.check_out
+        ) {
+          markReserveAccepted();
+        }
+      }, 250);
+
+      // Prefer callTool (ChatGPT widget API); fall back to postMessage for other MCP hosts.
+      if (window.openai && window.openai.callTool) {
+        Promise.resolve(window.openai.callTool('book', params))
+          .then(markReserveAccepted)
+          .catch(() => {
+            finishWithError();
+          });
+      } else {
+        try {
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: { name: 'book', arguments: params }
+          }, '*');
+        } catch (_err) {
+          finishWithError();
+        }
+      }
+    }
+
+    /* ── Render all cards ── */
+    function render(data) {
+      const units = data.units || [];
+      const bookingContext = {
+        check_in: data.check_in || '',
+        check_out: data.check_out || '',
+        guests: data.guests || 2,
+      };
+
+      if (units.length === 0) {
+        document.getElementById('root').innerHTML = '<div id="loading">No rooms found matching your criteria.</div>';
+        return;
+      }
+
+      document.getElementById('root').innerHTML =
+        '<div class="cards-container">' +
+        units.map(u => buildCard(u, bookingContext)).join('') +
+        '</div>';
+      clearReserveError();
+    }
+
+    const HYDRATION_TIMEOUT_MS = 5000;
+    const HYDRATION_POLL_MS = 250;
+    const HYDRATION_MAX_POLLS = 20;
+    let hydrated = false;
+    let hydrationTimeoutId = null;
+    let hydrationPollId = null;
+
+    function isStructuredRoomPayload(data) {
+      return !!data && typeof data === 'object' && Array.isArray(data.units);
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredRoomPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function clearHydrationTimers() {
+      if (hydrationTimeoutId) {
+        clearTimeout(hydrationTimeoutId);
+        hydrationTimeoutId = null;
+      }
+      if (hydrationPollId) {
+        clearInterval(hydrationPollId);
+        hydrationPollId = null;
+      }
+    }
+
+    function hydrate(raw) {
+      if (hydrated) return true;
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+
+      hydrated = true;
+      clearHydrationTimers();
+      render(payload);
+      return true;
+    }
+
+    function showLoadError() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML =
+        '<div id="loading">Unable to load rooms. Please retry.<br><button class="retry-btn" type="button" onclick="retryHydration()">Retry</button></div>';
+    }
+
+    function probeHydrationSources() {
+      if (hydrated) return true;
+      if (window.openai && hydrate(window.openai.toolOutput)) return true;
+      if (window.openai && typeof window.openai.getToolResult === 'function') {
+        Promise.resolve(window.openai.getToolResult())
+          .then(hydrate)
+          .catch(() => {});
+      }
+      return hydrated;
+    }
+
+    function startHydrationChecks() {
+      clearHydrationTimers();
+      probeHydrationSources();
+
+      let polls = 0;
+      hydrationPollId = setInterval(() => {
+        polls += 1;
+        if (probeHydrationSources() || polls >= HYDRATION_MAX_POLLS) {
+          clearInterval(hydrationPollId);
+          hydrationPollId = null;
+        }
+      }, HYDRATION_POLL_MS);
+
+      hydrationTimeoutId = setTimeout(showLoadError, HYDRATION_TIMEOUT_MS);
+    }
+
+    function retryHydration() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML = '<div id="loading">Retrying...</div>';
+      startHydrationChecks();
+    }
+    window.retryHydration = retryHydration;
+
+    /* ── Listen for tool results from ChatGPT ── */
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.jsonrpc !== '2.0' || msg.method !== 'ui/notifications/tool-result') return;
+      if (normalizeBookingPayload(msg)) {
+        clearReserveError();
+      }
+      hydrate(msg);
+    });
+
+    startHydrationChecks();
+  </script>
+</body>
+</html>

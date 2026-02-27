@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Booking Confirmation</title>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border: rgba(17,24,39,.10);
+      --divider: rgba(17,24,39,.08);
+      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+      --radius: 28px;
+      --focus: rgba(17,24,39,.22);
+      --cta:#111827;
+      --ctaText:#ffffff;
+      --pill: rgba(17,24,39,.06);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 20% 0%, #e9eef7 0%, var(--bg) 55%, #eef2f7 100%);
+      color: var(--text);
+      padding: clamp(18px, 3vw, 48px);
+    }
+
+    .wrap{
+      max-width: 1020px;
+      margin: 0 auto;
+      display:grid;
+      gap: 18px;
+      place-items: start center;
+    }
+
+    .confirmation{
+      width:min(860px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .hero{
+      position:relative;
+      height: 190px;
+      background:
+        radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.05), rgba(0,0,0,.55));
+      pointer-events:none;
+    }
+
+    .hero-inner{
+      position:absolute;
+      inset: 16px 18px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 12px;
+      z-index: 2;
+      color:#fff;
+    }
+
+    .hero-title{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width:0;
+    }
+    .hero-title h1{
+      margin:0;
+      font-size: 26px;
+      letter-spacing: -0.4px;
+      font-weight: 950;
+      line-height:1.15;
+      text-shadow: 0 14px 30px rgba(0,0,0,.35);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 560px;
+    }
+    .hero-title p{
+      margin:0;
+      color: rgba(255,255,255,.85);
+      font-weight: 650;
+      text-shadow: 0 14px 30px rgba(0,0,0,.35);
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+      font-weight: 800;
+      white-space:nowrap;
+    }
+    .status-pill .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: rgba(34,197,94,.95);
+      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
+    }
+
+    .content{
+      padding: 18px 22px 8px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns: 1fr;}
+      .hero-title h1{max-width: 100%;}
+    }
+
+    .panel{
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow:hidden;
+      background: #fff;
+    }
+    .panel-head{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--divider);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      background: rgba(17,24,39,.02);
+    }
+    .panel-head h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+      font-weight: 950;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-weight: 850;
+      color: var(--text);
+      font-size: 13px;
+      white-space:nowrap;
+    }
+    .panel-body{
+      padding: 14px 16px;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px 12px;
+      align-items:baseline;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .kv:last-child{border-bottom:none;}
+    .k{
+      color: var(--muted);
+      font-weight: 750;
+    }
+    .v{
+      font-weight: 950;
+      letter-spacing: -0.2px;
+    }
+    .v.muted{
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .link{
+      color: var(--text);
+      font-weight: 950;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Weather */
+    .weather{
+      border-radius: 26px;
+      overflow:hidden;
+      background: linear-gradient(180deg, #1c72d4 0%, #2e9df0 100%);
+      color:#fff;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255,255,255,.20);
+    }
+    .weather-inner{
+      padding: 18px 18px 16px;
+      display:grid;
+      gap: 12px;
+      text-align:center;
+    }
+    .wx-top{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 18px;
+      margin-top: 2px;
+    }
+    .wx-temp{
+      font-size: 72px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .wx-city{
+      font-size: 22px;
+      font-weight: 700;
+      opacity: .95;
+    }
+    .wx-desc{
+      font-size: 22px;
+      font-weight: 650;
+      opacity: .95;
+      line-height: 1.35;
+      padding: 0 10px 8px;
+    }
+    .wx-icon{
+      width: 74px; height: 74px;
+      filter: drop-shadow(0 18px 28px rgba(0,0,0,.25));
+    }
+
+    /* Calendar */
+    .calendar-wrap{
+      margin-top: 16px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background:#fff;
+      box-shadow: var(--shadow-soft);
+      overflow:hidden;
+    }
+    .calendar-body{
+      padding: 16px;
+      display:grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 560px){
+      .calendar-body{grid-template-columns: 1fr; gap: 10px;}
+      .daybox{display:flex; align-items:baseline; gap: 10px;}
+    }
+
+    .daybox{
+      padding: 8px 6px;
+      color: var(--text);
+    }
+    .dow{
+      font-weight: 750;
+      color: var(--muted);
+      font-size: 20px;
+      margin:0;
+    }
+    .dom{
+      font-size: 64px;
+      font-weight: 950;
+      letter-spacing: -1px;
+      margin: 2px 0 0 0;
+      line-height: 1;
+    }
+
+    .events{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .event{
+      display:grid;
+      grid-template-columns: 6px 1fr;
+      gap: 12px;
+      padding: 14px 14px;
+      border-radius: 18px;
+      background: rgba(17,24,39,.03);
+      border: 1px solid rgba(17,24,39,.06);
+    }
+    .event.selected{
+      outline: 2px dashed #1e6bf1;
+      outline-offset: 2px;
+      background: #fff;
+    }
+    .bar{
+      width: 6px;
+      border-radius: 999px;
+      background: #ef4444;
+    }
+    .bar.blue{background:#2563eb;}
+    .event h4{
+      margin:0;
+      font-size: 20px;
+      letter-spacing: -0.2px;
+      font-weight: 950;
+    }
+    .event p{
+      margin: 4px 0 0 0;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .calendar-actions{
+      padding: 14px 16px 18px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    @media (max-width: 560px){
+      .calendar-actions{flex-direction:column;}
+    }
+    .btn{
+      height: 54px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      color: var(--text);
+      font-weight: 950;
+      font-size: 16px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .btn.primary{
+      flex:1;
+      border: none;
+      background: #111827;
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+    }
+    .btn:focus{outline:none; box-shadow: 0 0 0 4px var(--focus);}
+
+    .footer{
+      padding: 0 22px 20px;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .hidden{display:none;}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+
+    <section class="confirmation" aria-label="Booking confirmation">
+      <div class="hero" role="img" aria-label="Booking hero">
+        <div class="hero-inner">
+          <div class="hero-title">
+            <h1 id="propertyName">Gont is a cozy house near Bukovel</h1>
+            <p id="bookingRef">Confirmation • #BK-20481</p>
+          </div>
+          <div class="status-pill" aria-label="Confirmed">
+            <span class="dot" aria-hidden="true"></span> Confirmed
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="grid">
+          <section class="panel" aria-label="Booking details">
+            <header class="panel-head">
+              <h2>Booking details</h2>
+              <span class="chip" id="datesChip">Mar 27 – 29, 2026</span>
+            </header>
+            <div class="panel-body">
+              <div class="kv">
+                <div class="k">Guest</div>
+                <div class="v">1 adult · 1 pet</div>
+              </div>
+              <div class="kv">
+                <div class="k">Check-in</div>
+                <div class="v" id="checkinText">Mar 27, 15:00</div>
+              </div>
+              <div class="kv">
+                <div class="k">Check-out</div>
+                <div class="v" id="checkoutText">Mar 29, 11:00</div>
+              </div>
+              <div class="kv">
+                <div class="k">Address</div>
+                <div class="v muted">Shared after confirmation</div>
+              </div>
+              <div class="kv">
+                <div class="k">Cancellation</div>
+                <div class="v"><a class="link" href="#policy">Free cancellation policy</a></div>
+              </div>
+              <div class="kv">
+                <div class="k">Total</div>
+                <div class="v">₴16,000.00</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="weatherSection" class="weather hidden" aria-label="Weather preview">
+            <div class="weather-inner">
+              <div class="wx-top">
+                <svg class="wx-icon" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+                  <circle cx="52" cy="38" r="18" fill="#FFB020"/>
+                  <g stroke="#FFB020" stroke-width="4" stroke-linecap="round">
+                    <path d="M52 10v10"/><path d="M52 56v10"/>
+                    <path d="M24 38h10"/><path d="M70 38h10"/>
+                    <path d="M33 19l7 7"/><path d="M64 50l7 7"/>
+                    <path d="M71 19l-7 7"/><path d="M40 50l-7 7"/>
+                  </g>
+                  <path d="M38 62c-9 0-16-6-16-14s7-14 16-14c6 0 11 2 14 6 2-1 4-2 7-2 8 0 15 6 15 14s-7 14-15 14H38z"
+                        fill="rgba(255,255,255,.88)"/>
+                  <path d="M34 62c-7 0-12-5-12-11 0-6 5-11 12-11 5 0 9 2 11 5"
+                        fill="rgba(255,255,255,.72)"/>
+                </svg>
+
+                <div class="wx-temp" id="wxTemp">72°</div>
+              </div>
+
+              <div class="wx-city" id="wxCity">San Francisco</div>
+              <div class="wx-desc" id="wxDesc">Sunny sky and warm temperatures are expected for the rest of the afternoon.</div>
+            </div>
+          </section>
+        </div>
+
+        <section class="calendar-wrap" aria-label="Add to calendar">
+          <div class="calendar-body">
+            <div class="daybox" aria-label="Calendar day">
+              <p class="dow" id="dowText">Friday</p>
+              <p class="dom" id="domText">28</p>
+            </div>
+
+            <div class="events" aria-label="Calendar events">
+              <div class="event">
+                <div class="bar"></div>
+                <div>
+                  <h4>Check-in</h4>
+                  <p id="eventCheckin">3:00 – 3:15 PM</p>
+                </div>
+              </div>
+
+              <div class="event selected">
+                <div class="bar blue"></div>
+                <div>
+                  <h4>Stay: Gont (2 nights)</h4>
+                  <p id="eventStay">Mar 27 – Mar 29</p>
+                </div>
+              </div>
+
+              <div class="event">
+                <div class="bar"></div>
+                <div>
+                  <h4>Check-out</h4>
+                  <p id="eventCheckout">11:00 – 11:15 AM</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="calendar-actions">
+            <button class="btn primary" id="addToCalendarBtn" type="button">Add to calendar</button>
+            <button class="btn" id="discardBtn" type="button">Discard</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer" id="policy">
+        Free cancellation until <strong>March 13</strong> (local time). After that, cancellation may be non‑refundable depending on the host’s rules and timing.
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Demo booking data (replace with your real data)
+    const booking = {
+      propertyName: "Gont is a cozy house near Bukovel",
+      confirmationId: "BK-20481",
+      guestsText: "1 adult · 1 pet",
+      checkInISO: "2026-03-27T15:00:00",
+      checkOutISO:"2026-03-29T11:00:00",
+      weather: {
+        temp: "72°",
+        city: "San Francisco",
+        desc: "Sunny sky and warm temperatures are expected for the rest of the afternoon."
+      }
+    };
+
+    const fmtMonthDay = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const fmtTime = (d) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const fmtDow = (d) => d.toLocaleDateString(undefined, { weekday: "long" });
+
+    function withinNextDays(date, days){
+      const now = new Date();
+      const end = new Date(now.getTime() + days*24*60*60*1000);
+      return date >= now && date <= end;
+    }
+    function setText(id, value){ const el = document.getElementById(id); if(el) el.textContent = value; }
+
+    const checkIn = new Date(booking.checkInISO);
+    const checkOut = new Date(booking.checkOutISO);
+
+    setText("propertyName", booking.propertyName);
+    setText("bookingRef", "Confirmation • #" + booking.confirmationId);
+
+    const chip = `${fmtMonthDay(checkIn)} – ${fmtMonthDay(checkOut)}, ${checkOut.getFullYear()}`;
+    setText("datesChip", chip);
+    setText("checkinText", `${fmtMonthDay(checkIn)}, ${fmtTime(checkIn)}`);
+    setText("checkoutText", `${fmtMonthDay(checkOut)}, ${fmtTime(checkOut)}`);
+
+    setText("dowText", fmtDow(checkIn));
+    setText("domText", checkIn.getDate());
+
+    setText("eventCheckin", `${fmtTime(checkIn)} – ${fmtTime(new Date(checkIn.getTime() + 15*60*1000))}`);
+    setText("eventCheckout", `${fmtTime(checkOut)} – ${fmtTime(new Date(checkOut.getTime() + 15*60*1000))}`);
+    setText("eventStay", `${fmtMonthDay(checkIn)} – ${fmtMonthDay(checkOut)}`);
+
+    // Weather shown only if booking starts within next 2 weeks
+    const showWeather = withinNextDays(checkIn, 14);
+    const weatherSection = document.getElementById("weatherSection");
+    if(showWeather){
+      weatherSection.classList.remove("hidden");
+      setText("wxTemp", booking.weather.temp);
+      setText("wxCity", booking.weather.city);
+      setText("wxDesc", booking.weather.desc);
+    }
+
+    // Add to calendar (.ics)
+    function toICSDateTime(dt){
+      const pad = (n)=> String(n).padStart(2,'0');
+      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+    }
+    function toICSDate(dt){
+      const pad = (n)=> String(n).padStart(2,'0');
+      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+    }
+    function downloadICS(filename, content){
+      const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+    function buildICS(){
+      const uidBase = booking.confirmationId + "-" + Date.now();
+      const now = new Date();
+
+      const stayStart = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate());
+      const stayEndExclusive = new Date(checkOut.getFullYear(), checkOut.getMonth(), checkOut.getDate() + 1);
+
+      const lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Booking//Confirmation//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+
+        "BEGIN:VEVENT",
+        `UID:${uidBase}-stay`,
+        `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART;VALUE=DATE:${toICSDate(stayStart)}`,
+        `DTEND;VALUE=DATE:${toICSDate(stayEndExclusive)}`,
+        `SUMMARY:Stay: ${booking.propertyName}`,
+        `DESCRIPTION:Booking ${booking.confirmationId} • ${booking.guestsText}`,
+        "END:VEVENT",
+
+        "BEGIN:VEVENT",
+        `UID:${uidBase}-checkin`,
+        `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART:${toICSDateTime(checkIn)}`,
+        `DTEND:${toICSDateTime(new Date(checkIn.getTime() + 15*60*1000))}`,
+        `SUMMARY:Check-in — ${booking.propertyName}`,
+        `DESCRIPTION:Booking ${booking.confirmationId}`,
+        "END:VEVENT",
+
+        "BEGIN:VEVENT",
+        `UID:${uidBase}-checkout`,
+        `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART:${toICSDateTime(checkOut)}`,
+        `DTEND:${toICSDateTime(new Date(checkOut.getTime() + 15*60*1000))}`,
+        `SUMMARY:Check-out — ${booking.propertyName}`,
+        `DESCRIPTION:Booking ${booking.confirmationId}`,
+        "END:VEVENT",
+
+        "END:VCALENDAR"
+      ];
+      return lines.join("\r\n");
+    }
+
+    document.getElementById("addToCalendarBtn").addEventListener("click", () => {
+      downloadICS(`booking-${booking.confirmationId}.ics`, buildICS());
+    });
+    document.getElementById("discardBtn").addEventListener("click", () => {
+      document.querySelector(".calendar-wrap").style.display = "none";
+    });
+  </script>
+</body>
+</html>

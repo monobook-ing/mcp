@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Booking Confirmation</title>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border: rgba(17,24,39,.10);
+      --divider: rgba(17,24,39,.08);
+      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+      --radius: 28px;
+      --focus: rgba(17,24,39,.22);
+      --cta:#111827;
+      --ctaText:#ffffff;
+      --pill: rgba(17,24,39,.06);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: transparent;
+      color: var(--text);
+      padding: 8px;
+    }
+
+    .wrap{
+      max-width: 1020px;
+      margin: 0 auto;
+      display:grid;
+      gap: 18px;
+      place-items: start center;
+    }
+
+    .confirmation{
+      width:min(860px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .hero{
+      position:relative;
+      height: 190px;
+      background:
+        radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.05), rgba(0,0,0,.55));
+      pointer-events:none;
+    }
+
+    .hero-inner{
+      position:absolute;
+      inset: 16px 18px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 12px;
+      z-index: 2;
+      color:#fff;
+    }
+
+    .hero-title{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width:0;
+    }
+    .hero-title h1{
+      margin:0;
+      font-size: 26px;
+      letter-spacing: -0.4px;
+      font-weight: 950;
+      line-height:1.15;
+      text-shadow: 0 14px 30px rgba(0,0,0,.35);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 560px;
+    }
+    .hero-title p{
+      margin:0;
+      color: rgba(255,255,255,.85);
+      font-weight: 650;
+      text-shadow: 0 14px 30px rgba(0,0,0,.35);
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+      font-weight: 800;
+      white-space:nowrap;
+    }
+    .status-pill .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: rgba(34,197,94,.95);
+      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
+    }
+
+    .content{
+      padding: 18px 22px 8px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .panel{
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow:hidden;
+      background: #fff;
+    }
+    .panel-head{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--divider);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      background: rgba(17,24,39,.02);
+    }
+    .panel-head h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+      font-weight: 950;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-weight: 850;
+      color: var(--text);
+      font-size: 13px;
+      white-space:nowrap;
+    }
+    .panel-body{
+      padding: 14px 16px;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px 12px;
+      align-items:baseline;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .kv:last-child{border-bottom:none;}
+    .k{
+      color: var(--muted);
+      font-weight: 750;
+    }
+    .v{
+      font-weight: 950;
+      letter-spacing: -0.2px;
+    }
+    .v.muted{
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    /* Calendar */
+    .calendar-wrap{
+      margin-top: 16px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background:#fff;
+      box-shadow: var(--shadow-soft);
+      overflow:hidden;
+    }
+    .calendar-body{
+      padding: 16px;
+      display:grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 560px){
+      .calendar-body{grid-template-columns: 1fr; gap: 10px;}
+      .daybox{display:flex; align-items:baseline; gap: 10px;}
+    }
+
+    .daybox{
+      padding: 8px 6px;
+      color: var(--text);
+    }
+    .dow{
+      font-weight: 750;
+      color: var(--muted);
+      font-size: 20px;
+      margin:0;
+    }
+    .dom{
+      font-size: 64px;
+      font-weight: 950;
+      letter-spacing: -1px;
+      margin: 2px 0 0 0;
+      line-height: 1;
+    }
+
+    .events{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .event{
+      display:grid;
+      grid-template-columns: 6px 1fr;
+      gap: 12px;
+      padding: 14px 14px;
+      border-radius: 18px;
+      background: rgba(17,24,39,.03);
+      border: 1px solid rgba(17,24,39,.06);
+    }
+    .event.selected{
+      outline: 2px dashed #1e6bf1;
+      outline-offset: 2px;
+      background: #fff;
+    }
+    .bar{
+      width: 6px;
+      border-radius: 999px;
+      background: #ef4444;
+    }
+    .bar.blue{background:#2563eb;}
+    .event h4{
+      margin:0;
+      font-size: 20px;
+      letter-spacing: -0.2px;
+      font-weight: 950;
+    }
+    .event p{
+      margin: 4px 0 0 0;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .calendar-actions{
+      padding: 14px 16px 18px;
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    @media (max-width: 560px){
+      .calendar-actions{flex-direction:column;}
+    }
+    .btn{
+      height: 54px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      color: var(--text);
+      font-weight: 950;
+      font-size: 16px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .btn.primary{
+      flex:1;
+      border: none;
+      background: #111827;
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+    }
+    .btn:focus{outline:none; box-shadow: 0 0 0 4px var(--focus);}
+
+    .footer{
+      padding: 0 22px 20px;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 860px){
+      .hero-title h1{max-width: 100%;}
+    }
+
+    #loading{
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .retry-btn{
+      margin-top: 14px;
+      border: 1px solid rgba(17,24,39,.14);
+      background: #fff;
+      color: #111827;
+      border-radius: 999px;
+      height: 40px;
+      padding: 0 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root"><div id="loading">Loading confirmation...</div></div>
+
+  <script>
+    /* ── Format helpers ── */
+    const currencySymbols = { USD: '$', UAH: '₴', EUR: '€' };
+    function sym(code) { return currencySymbols[code] || code + ' '; }
+
+    function formatMoney(amount, currency) {
+      return sym(currency) + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtDate(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function fmtDateFull(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function fmtDow(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long' });
+    }
+
+    function fmtDom(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.getDate();
+    }
+
+    function getCancelDate(checkIn) {
+      const d = new Date(checkIn + 'T00:00:00');
+      d.setDate(d.getDate() - 14);
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    }
+
+    /* ── ICS calendar generation ── */
+    function toICSDateTime(dt) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+    }
+    function toICSDate(dt) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+    }
+
+    function downloadICS(booking) {
+      const checkIn = new Date(booking.check_in + 'T' + (booking.check_in_time || '15:00'));
+      const checkOut = new Date(booking.check_out + 'T' + (booking.check_out_time || '11:00'));
+      const now = new Date();
+      const uid = booking.confirmation_code + '-' + Date.now();
+
+      const stayStart = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate());
+      const stayEnd = new Date(checkOut.getFullYear(), checkOut.getMonth(), checkOut.getDate() + 1);
+
+      const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Booking//Confirmation//EN',
+        'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+        'BEGIN:VEVENT', `UID:${uid}-stay`, `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART;VALUE=DATE:${toICSDate(stayStart)}`, `DTEND;VALUE=DATE:${toICSDate(stayEnd)}`,
+        `SUMMARY:Stay: ${booking.unit_name}`,
+        `DESCRIPTION:Booking ${booking.confirmation_code} - ${booking.guests} guest(s)`,
+        'END:VEVENT',
+        'BEGIN:VEVENT', `UID:${uid}-checkin`, `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART:${toICSDateTime(checkIn)}`,
+        `DTEND:${toICSDateTime(new Date(checkIn.getTime() + 15*60*1000))}`,
+        `SUMMARY:Check-in — ${booking.unit_name}`,
+        `DESCRIPTION:Booking ${booking.confirmation_code}`,
+        'END:VEVENT',
+        'BEGIN:VEVENT', `UID:${uid}-checkout`, `DTSTAMP:${toICSDateTime(now)}`,
+        `DTSTART:${toICSDateTime(checkOut)}`,
+        `DTEND:${toICSDateTime(new Date(checkOut.getTime() + 15*60*1000))}`,
+        `SUMMARY:Check-out — ${booking.unit_name}`,
+        `DESCRIPTION:Booking ${booking.confirmation_code}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ];
+
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `booking-${booking.confirmation_code}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    /* ── Render ── */
+    function render(data) {
+      const dateChip = `${fmtDate(data.check_in)} – ${fmtDateFull(data.check_out)}`;
+      const ciTime = data.check_in_time || '15:00';
+      const coTime = data.check_out_time || '11:00';
+      const cancelDate = getCancelDate(data.check_in);
+      const total = formatMoney(data.total_price, data.currency_code);
+
+      document.getElementById('root').innerHTML = `
+        <main class="wrap">
+          <section class="confirmation">
+            <div class="hero">
+              <div class="hero-inner">
+                <div class="hero-title">
+                  <h1>${data.unit_name || 'Your Stay'}</h1>
+                  <p>Confirmation &bull; #${data.confirmation_code}</p>
+                </div>
+                <div class="status-pill">
+                  <span class="dot"></span> Confirmed
+                </div>
+              </div>
+            </div>
+
+            <div class="content">
+              <div class="grid">
+                <section class="panel">
+                  <header class="panel-head">
+                    <h2>Booking details</h2>
+                    <span class="chip">${dateChip}</span>
+                  </header>
+                  <div class="panel-body">
+                    <div class="kv">
+                      <div class="k">Guest</div>
+                      <div class="v">${data.guest_name || ''} &middot; ${data.guests || 1} guest(s)</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Email</div>
+                      <div class="v">${data.guest_email || ''}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Check-in</div>
+                      <div class="v">${fmtDate(data.check_in)}, ${ciTime}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Check-out</div>
+                      <div class="v">${fmtDate(data.check_out)}, ${coTime}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Address</div>
+                      <div class="v muted">Shared after confirmation</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Cancellation</div>
+                      <div class="v">Free cancellation until ${cancelDate}</div>
+                    </div>
+                    <div class="kv">
+                      <div class="k">Total</div>
+                      <div class="v">${total}</div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <section class="calendar-wrap" id="calendarWrap">
+                <div class="calendar-body">
+                  <div class="daybox">
+                    <p class="dow">${fmtDow(data.check_in)}</p>
+                    <p class="dom">${fmtDom(data.check_in)}</p>
+                  </div>
+                  <div class="events">
+                    <div class="event">
+                      <div class="bar"></div>
+                      <div>
+                        <h4>Check-in</h4>
+                        <p>${ciTime}</p>
+                      </div>
+                    </div>
+                    <div class="event selected">
+                      <div class="bar blue"></div>
+                      <div>
+                        <h4>Stay: ${data.unit_name} (${data.nights || '–'} nights)</h4>
+                        <p>${fmtDate(data.check_in)} – ${fmtDate(data.check_out)}</p>
+                      </div>
+                    </div>
+                    <div class="event">
+                      <div class="bar"></div>
+                      <div>
+                        <h4>Check-out</h4>
+                        <p>${coTime}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="calendar-actions">
+                  <button class="btn primary" id="addCalBtn" type="button">Add to calendar</button>
+                  <button class="btn" id="discardBtn" type="button">Discard</button>
+                </div>
+              </section>
+            </div>
+
+            <div class="footer">
+              Free cancellation until <strong>${cancelDate}</strong> (local time). After that, cancellation may be non-refundable depending on the host's rules and timing.
+            </div>
+          </section>
+        </main>`;
+
+      // Attach calendar handlers
+      document.getElementById('addCalBtn').addEventListener('click', () => downloadICS(data));
+      document.getElementById('discardBtn').addEventListener('click', () => {
+        document.getElementById('calendarWrap').style.display = 'none';
+      });
+    }
+
+    const HYDRATION_TIMEOUT_MS = 5000;
+    const HYDRATION_POLL_MS = 250;
+    const HYDRATION_MAX_POLLS = 20;
+    let hydrated = false;
+    let hydrationTimeoutId = null;
+    let hydrationPollId = null;
+
+    function isStructuredConfirmationPayload(data) {
+      return !!data &&
+        typeof data === 'object' &&
+        typeof data.confirmation_code === 'string' &&
+        typeof data.check_in === 'string' &&
+        typeof data.check_out === 'string';
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredConfirmationPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function clearHydrationTimers() {
+      if (hydrationTimeoutId) {
+        clearTimeout(hydrationTimeoutId);
+        hydrationTimeoutId = null;
+      }
+      if (hydrationPollId) {
+        clearInterval(hydrationPollId);
+        hydrationPollId = null;
+      }
+    }
+
+    function hydrate(raw) {
+      if (hydrated) return true;
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+
+      hydrated = true;
+      clearHydrationTimers();
+      render(payload);
+      return true;
+    }
+
+    function showLoadError() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML =
+        '<div id="loading">Unable to load confirmation details. Please retry.<br><button class="retry-btn" type="button" onclick="retryHydration()">Retry</button></div>';
+    }
+
+    function probeHydrationSources() {
+      if (hydrated) return true;
+      if (window.openai && hydrate(window.openai.toolOutput)) return true;
+      if (window.openai && typeof window.openai.getToolResult === 'function') {
+        Promise.resolve(window.openai.getToolResult())
+          .then(hydrate)
+          .catch(() => {});
+      }
+      return hydrated;
+    }
+
+    function startHydrationChecks() {
+      clearHydrationTimers();
+      probeHydrationSources();
+
+      let polls = 0;
+      hydrationPollId = setInterval(() => {
+        polls += 1;
+        if (probeHydrationSources() || polls >= HYDRATION_MAX_POLLS) {
+          clearInterval(hydrationPollId);
+          hydrationPollId = null;
+        }
+      }, HYDRATION_POLL_MS);
+
+      hydrationTimeoutId = setTimeout(showLoadError, HYDRATION_TIMEOUT_MS);
+    }
+
+    function retryHydration() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML = '<div id="loading">Retrying...</div>';
+      startHydrationChecks();
+    }
+    window.retryHydration = retryHydration;
+
+    /* ── Listen for tool results ── */
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.jsonrpc !== '2.0' || msg.method !== 'ui/notifications/tool-result') return;
+      hydrate(msg);
+    });
+
+    startHydrationChecks();
+  </script>
+</body>
+</html>

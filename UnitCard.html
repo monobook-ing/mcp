@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>room_card</title>
+  <style>
+    :root{
+      --text:#0b1220;
+      --white:#fff;
+      --muted: rgba(255,255,255,.82);
+      --shadow: 0 28px 70px rgba(0,0,0,.18);
+      --shadowSoft: 0 14px 34px rgba(0,0,0,.14);
+      --radius: 34px;
+      --btnText: #111827;
+      --focus: rgba(255,255,255,.25);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(900px 520px at 20% 10%, #e9eef7 0%, #f3f4f6 55%, #eef2f7 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      padding: 24px;
+      color: var(--text);
+    }
+
+    /* Room card in the same style as screenshot: big radius, soft shadow, bottom overlay */
+    .room-card{
+      width: min(980px, 100%);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      position:relative;
+      background:#111;
+    }
+
+    .room-media{
+      position:relative;
+      height: 520px;
+      background:
+        radial-gradient(1200px 700px at 75% 15%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%),
+        linear-gradient(135deg, #101827 0%, #2a3f67 48%, #c89b57 100%);
+    }
+
+    /* Placeholder overlay + dark bottom fade */
+    .room-media::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image: url('https://apps-sdk-beta.vercel.app/apps/assets/vysota21.jpeg');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position-y: center;
+      /*background:
+        radial-gradient(420px 240px at 25% 35%, rgba(255,255,255,.10), rgba(255,255,255,0) 60%),
+        linear-gradient(to bottom, rgba(0,0,0,0) 35%, rgba(0,0,0,.45) 72%, rgba(0,0,0,.70) 100%);*/
+      pointer-events:none;
+    }
+
+    .content{
+      position:absolute;
+      left: 26px;
+      right: 26px;
+      bottom: 22px;
+      color: var(--white);
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+    }
+
+    .title{
+      margin:0;
+      font-size: clamp(34px, 3.6vw, 54px);
+      line-height:1.05;
+      letter-spacing:-.6px;
+      font-weight: 900;
+      text-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+
+    .subtitle{
+      margin:0;
+      font-size: 22px;
+      font-weight: 650;
+      color: var(--muted);
+      letter-spacing:-.2px;
+      text-shadow: 0 12px 34px rgba(0,0,0,.38);
+    }
+
+    .amenities{
+      display:flex;
+      align-items:center;
+      gap: 14px;
+      flex-wrap:wrap;
+      font-size: 20px;
+      font-weight: 650;
+      color: rgba(255,255,255,.85);
+      text-shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+
+    .amenities .item{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .amenities svg{
+      width: 22px;
+      height: 22px;
+      opacity: .9;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
+    }
+
+    .divider{
+      width:1px;
+      height: 18px;
+      background: rgba(255,255,255,.28);
+      border-radius: 999px;
+      margin: 0 4px;
+    }
+
+    .cta-row{
+      display:flex;
+      gap: 18px;
+      align-items:center;
+      margin-top: 4px;
+    }
+
+    .price-pill{
+      height: 78px;
+      min-width: 210px;
+      padding: 0 22px;
+      border-radius: 26px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadowSoft);
+      font-weight: 950;
+      letter-spacing: -0.4px;
+      font-size: 48px;
+    }
+
+    .reserve{
+      flex: 1;
+      height: 78px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(255,255,255,.94);
+      color: var(--btnText);
+      font-weight: 900;
+      font-size: 26px;
+      letter-spacing: -0.2px;
+      cursor:pointer;
+      box-shadow: var(--shadowSoft);
+    }
+    .reserve:hover{ transform: translateY(-1px); }
+    .reserve:active{ transform: translateY(0px); }
+    .reserve:focus{
+      outline:none;
+      box-shadow: 0 0 0 5px var(--focus), var(--shadowSoft);
+    }
+
+    /* subtle stroke */
+    .room-card::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: var(--radius);
+      pointer-events:none;
+      border: 1px solid rgba(255,255,255,.10);
+
+    }
+
+    @media (max-width: 820px){
+      .room-media{height: 460px;}
+      .content{left: 18px; right: 18px; bottom: 18px;}
+      .price-pill{min-width: 170px; height: 70px; font-size: 40px;}
+      .reserve{height: 70px; font-size: 22px;}
+      .amenities{font-size: 18px;}
+    }
+
+    @media (max-width: 560px){
+      .room-media{height: 420px;}
+      .cta-row{flex-direction:column; align-items:stretch;}
+      .price-pill{width: 100%;}
+      .reserve{width: 100%;}
+      .amenities{gap: 10px;}
+      .divider{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+  <article class="room-card" aria-label="room_card">
+    <div class="room-media" role="img" aria-label="Room image placeholder">
+      <div class="content">
+        <div>
+          <h1 class="title">Sparrow - Vysota890</h1>
+          <p class="subtitle">Vysota890</p>
+        </div>
+
+        <div class="amenities" aria-label="Room amenities">
+          <span class="item">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 10h16v8H4v-8z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M4 10V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M20 18v2M4 18v2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Bed: <strong>2</strong>
+          </span>
+
+          <span class="divider" aria-hidden="true"></span>
+
+          <span class="item">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 7a3 3 0 0 1 6 0v7" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M4 14h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M6 21v-2M18 21v-2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Baths: <strong>1</strong>
+          </span>
+
+          <span class="divider" aria-hidden="true"></span>
+
+          <span class="item">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16v10H4V7z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M8 7v4M12 7v2M16 7v4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            N/A
+          </span>
+        </div>
+
+        <div class="cta-row" aria-label="Room CTA">
+          <div class="price-pill" aria-label="Price">150 UAH</div>
+          <button class="reserve" type="button">Reserve Now</button>
+        </div>
+      </div>
+    </div>
+  </article>
+
+</body>
+</html>

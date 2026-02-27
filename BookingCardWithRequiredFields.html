@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Booking Required Fields Card</title>
+  <style>
+    :root{
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: rgba(17,24,39,.10);
+      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+      --radius: 28px;
+      --cta: #111827;
+      --ctaText: #ffffff;
+      --pill: rgba(17,24,39,.06);
+      --divider: rgba(17,24,39,.08);
+      --link: #111827;
+      --focus: rgba(17,24,39,.22);
+      --field: rgba(17,24,39,.04);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 20% 0%, #e9eef7 0%, var(--bg) 55%, #eef2f7 100%);
+      color: var(--text);
+      padding: clamp(18px, 3vw, 48px);
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      place-items: start center;
+      gap: 22px;
+    }
+
+    .booking-card{
+      width: min(720px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .media{
+      position: relative;
+      height: 210px;
+      background:
+        linear-gradient(115deg, rgba(255,255,255,.08), rgba(255,255,255,0)),
+        radial-gradient(900px 400px at 80% 20%, rgba(255,255,255,.25), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
+    }
+
+    .media::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-image: url('https://apps-sdk-beta.vercel.app/apps/assets/vysota21.jpeg');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position-y: center;
+      /*background:
+        radial-gradient(260px 140px at 65% 35%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
+        linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.55));*/
+      pointer-events:none;
+    }
+
+    .media-top{
+      position:absolute;
+      top:16px;
+      left:16px;
+      right:16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      z-index:2;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      font-weight: 650;
+      letter-spacing: .2px;
+      box-shadow: var(--shadow-soft);
+      font-size: 13px;
+    }
+
+    .badge .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.18);
+    }
+
+    .media-bottom{
+      position:absolute;
+      left:18px;
+      right:18px;
+      bottom:16px;
+      z-index:2;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .price-pill{
+      display:flex;
+      align-items:baseline;
+      gap:6px;
+      padding:14px 16px;
+      border-radius: 20px;
+      background: rgba(17,24,39,.22);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      box-shadow: var(--shadow-soft);
+      min-width: 128px;
+      justify-content:center;
+    }
+    .price-pill .amount{font-size: 34px; font-weight: 900; line-height: 1;}
+    .price-pill .per{font-size: 13px; opacity:.9; font-weight: 650;}
+
+    .content{
+      padding: 22px 22px 18px;
+    }
+
+    .title{
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -0.4px;
+      margin:0 0 6px 0;
+      font-weight: 900;
+    }
+
+    .sub{
+      margin:0;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    .meta{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top: 10px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .star{
+      display:inline-flex;
+      gap:6px;
+      align-items:center;
+      color: var(--text);
+      font-weight: 900;
+    }
+    .star svg{width:16px;height:16px}
+
+    .section{
+      margin-top: 16px;
+      border-top: 1px solid var(--divider);
+      padding-top: 16px;
+    }
+    .section h3{
+      margin:0 0 6px 0;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .section p{
+      margin:0;
+      color: var(--muted);
+      font-weight: 650;
+      line-height: 1.45;
+    }
+    .section a{
+      color: var(--link);
+      font-weight: 900;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .rows{
+      margin-top: 14px;
+      border-top: 1px solid var(--divider);
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .row:last-child{border-bottom:none;}
+    .row .left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      flex: 1;
+      min-width: 0;
+    }
+    .row .label{
+      font-weight: 950;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .row .value{
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 14px;
+    }
+    .row .action{
+      flex: 0 0 auto;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      color: var(--text);
+      font-weight: 900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .row .action:focus, .row .action:hover{
+      outline:none;
+      box-shadow: 0 0 0 4px var(--focus);
+      background: rgba(17,24,39,.06);
+    }
+
+    .field{
+      width: 100%;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--field);
+      padding: 0 12px;
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .field::placeholder{ color: rgba(107,114,128,.85); font-weight: 650; }
+    .field:focus{
+      outline:none;
+      box-shadow: 0 0 0 4px var(--focus);
+      background: #fff;
+    }
+    .hint{
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .price{
+      margin-top: 10px;
+      border-top: 1px solid var(--divider);
+      padding-top: 14px;
+    }
+    .price-line{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 0;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .total{
+      margin-top: 6px;
+      padding-top: 14px;
+      border-top: 1px solid var(--divider);
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap: 12px;
+    }
+    .total .tlabel{ font-weight: 950; letter-spacing: -0.2px; font-size: 18px; }
+    .total .tvalue{ font-weight: 950; font-size: 20px; }
+
+    .actions{
+      padding: 18px 22px 22px;
+      border-top: 1px solid var(--divider);
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .confirm{
+      flex:1;
+      height: 56px;
+      border-radius: 999px;
+      border: none;
+      background: var(--cta);
+      color: var(--ctaText);
+      font-weight: 950;
+      font-size: 16px;
+      letter-spacing: .2px;
+      cursor:pointer;
+      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+    }
+    .confirm:hover{transform: translateY(-1px);}
+    .confirm:active{transform: translateY(0px);}
+    .confirm:focus{outline:none; box-shadow: 0 0 0 4px var(--focus), 0 16px 30px rgba(17,24,39,.18);}
+
+    .secondary{
+      height: 56px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      color: var(--text);
+      font-weight: 950;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    dialog{
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      max-width: 560px;
+      width: calc(100% - 28px);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop{ background: rgba(17,24,39,.35); backdrop-filter: blur(2px); }
+    .modal-title{margin:0 0 10px 0; font-size:18px; font-weight: 950;}
+    .modal-text{margin:0; color: var(--muted); font-weight: 650; line-height: 1.55;}
+    .modal-actions{margin-top:14px; display:flex; justify-content:flex-end; gap:10px;}
+    .close{
+      height: 44px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      font-weight: 950;
+      cursor:pointer;
+    }
+
+    .error{
+      display:none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(239,68,68,.10);
+      border: 1px solid rgba(239,68,68,.22);
+      color: #991b1b;
+      font-weight: 750;
+      font-size: 13px;
+    }
+    .error.show{display:block;}
+
+    @media (max-width: 520px){
+      .media{height: 190px;}
+      .title{font-size: 22px;}
+      .media-bottom{flex-direction:column; align-items:stretch;}
+      .price-pill{width: 100%;}
+      .actions{flex-direction:column;}
+      .secondary{width:100%;}
+      .row{flex-direction:column; align-items:stretch;}
+      .row .action{width:100%;}
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <section class="booking-card" aria-label="Booking required fields card">
+      <div class="media" role="img" aria-label="Property photo placeholder">
+        <div class="media-top">
+          <span class="badge"><span class="dot"></span> Guest favorite</span>
+        </div>
+        <div class="media-bottom">
+          <div class="price-pill" aria-label="Price">
+            <span class="amount">₴8,000</span>
+            <span class="per">/ night</span>
+          </div>
+        </div>
+      </div>
+
+      <form class="content" id="bookingForm" novalidate>
+        <h2 class="title">Complete your booking</h2>
+        <p class="sub">Please provide contact details required to confirm the reservation.</p>
+
+        <div class="meta">
+          <span class="star" aria-label="Rating 5.0">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 17.3l-6.18 3.25 1.18-6.9L1.99 8.98l6.92-1L12 1.7l3.09 6.28 6.92 1-5.01 4.67 1.18 6.9L12 17.3z" fill="currentColor"/>
+            </svg>
+            5.0 <span style="color:var(--muted); font-weight:750;">(16)</span>
+          </span>
+        </div>
+
+        <div class="section" aria-label="Cancellation policy">
+          <h3>Free cancellation</h3>
+          <p>
+            Cancel before <strong>March 13</strong> for a full refund.
+            <a href="#policy" id="policyLink">Full policy</a>
+          </p>
+        </div>
+
+        <div class="rows" aria-label="Booking details">
+          <div class="row">
+            <div class="left">
+              <div class="label">Dates</div>
+              <div class="value">Mar 27 – 29, 2026</div>
+            </div>
+            <button class="action" type="button">Change</button>
+          </div>
+
+          <div class="row">
+            <div class="left">
+              <div class="label">Guests</div>
+              <div class="value">1 adult · 1 pet</div>
+            </div>
+            <button class="action" type="button">Change</button>
+          </div>
+        </div>
+
+        <div class="section" aria-label="Required fields">
+          <h3>Required fields</h3>
+
+          <div class="rows" style="border-top:0; margin-top: 10px;">
+            <div class="row" style="padding: 12px 0;">
+              <div class="left">
+                <div class="label">Email</div>
+                <div class="value">We’ll send the confirmation here</div>
+                <input class="field" name="email" type="email" inputmode="email" autocomplete="email"
+                       placeholder="name@example.com" required />
+              </div>
+            </div>
+
+            <div class="row" style="padding: 12px 0;">
+              <div class="left">
+                <div class="label">Phone number</div>
+                <div class="value">In case we need to reach you</div>
+                <input class="field" name="phone" type="tel" inputmode="tel" autocomplete="tel"
+                       placeholder="+380 XX XXX XX XX" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="hint">By confirming, you agree to the house rules and cancellation policy.</div>
+          <div class="error" id="formError">Please fill in a valid email and phone number.</div>
+        </div>
+
+        <div class="price" aria-label="Price breakdown">
+          <h3 style="margin:0 0 8px 0;">Price details</h3>
+
+          <div class="price-line">
+            <span>2 nights × ₴8,000.00</span>
+            <span>₴16,000.00</span>
+          </div>
+
+          <div class="price-line">
+            <span>Cleaning fee</span>
+            <span>₴0.00</span>
+          </div>
+
+          <div class="price-line">
+            <span>Service fee</span>
+            <span>₴0.00</span>
+          </div>
+
+          <div class="total">
+            <span class="tlabel">Total <span style="text-decoration: underline; text-underline-offset:3px;">UAH</span></span>
+            <span class="tvalue">₴16,000.00</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="secondary" type="button" onclick="document.getElementById('policyDialog').showModal()">Terms</button>
+          <button class="confirm" type="submit">Confirm</button>
+        </div>
+      </form>
+    </section>
+
+    <dialog id="policyDialog" aria-label="Cancellation policy dialog">
+      <h3 class="modal-title" id="policy">Cancellation policy</h3>
+      <p class="modal-text">
+        Free cancellation until <strong>March 13</strong> (local time). After that, cancellation may be non‑refundable
+        depending on the host’s rules and the timing of the cancellation.
+      </p>
+      <div class="modal-actions">
+        <button class="close" type="button" onclick="document.getElementById('policyDialog').close()">Close</button>
+      </div>
+    </dialog>
+  </main>
+
+  <script>
+    const policyLink = document.getElementById('policyLink');
+    policyLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('policyDialog').showModal();
+      history.replaceState(null, '', '#policy');
+    });
+
+    const form = document.getElementById('bookingForm');
+    const err = document.getElementById('formError');
+
+    function isValidPhone(v){
+      const digits = (v || '').replace(/\D/g,'');
+      return digits.length >= 8;
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = form.elements.email.value.trim();
+      const phone = form.elements.phone.value.trim();
+
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const phoneOk = isValidPhone(phone);
+
+      if(!emailOk || !phoneOk){
+        err.classList.add('show');
+        if(!emailOk) form.elements.email.focus();
+        else form.elements.phone.focus();
+        return;
+      }
+      err.classList.remove('show');
+      alert('Booking confirmed!\n\nEmail: ' + email + '\nPhone: ' + phone);
+    });
+  </script>
+</body>
+</html>

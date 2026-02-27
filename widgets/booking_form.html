@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Booking Form</title>
+  <style>
+    :root{
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: rgba(17,24,39,.10);
+      --shadow: 0 24px 60px rgba(0,0,0,.14);
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+      --radius: 28px;
+      --cta: #111827;
+      --ctaText: #ffffff;
+      --pill: rgba(17,24,39,.06);
+      --divider: rgba(17,24,39,.08);
+      --link: #111827;
+      --focus: rgba(17,24,39,.22);
+      --field: rgba(17,24,39,.04);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: transparent;
+      color: var(--text);
+      padding: 8px;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      place-items: start center;
+      gap: 22px;
+    }
+
+    .booking-card{
+      width: min(720px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .media{
+      position: relative;
+      height: 210px;
+      background:
+        linear-gradient(115deg, rgba(255,255,255,.08), rgba(255,255,255,0)),
+        radial-gradient(900px 400px at 80% 20%, rgba(255,255,255,.25), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
+    }
+
+    .media::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      pointer-events:none;
+    }
+
+    .media-top{
+      position:absolute;
+      top:16px;
+      left:16px;
+      right:16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      z-index:2;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      font-weight: 650;
+      letter-spacing: .2px;
+      box-shadow: var(--shadow-soft);
+      font-size: 13px;
+    }
+
+    .badge .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.18);
+    }
+
+    .media-bottom{
+      position:absolute;
+      left:18px;
+      right:18px;
+      bottom:16px;
+      z-index:2;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .price-pill{
+      display:flex;
+      align-items:baseline;
+      gap:6px;
+      padding:14px 16px;
+      border-radius: 20px;
+      background: rgba(17,24,39,.22);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color:#fff;
+      box-shadow: var(--shadow-soft);
+      min-width: 128px;
+      justify-content:center;
+    }
+    .price-pill .amount{font-size: 34px; font-weight: 900; line-height: 1;}
+    .price-pill .per{font-size: 13px; opacity:.9; font-weight: 650;}
+
+    .content{
+      padding: 22px 22px 18px;
+    }
+
+    .title{
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -0.4px;
+      margin:0 0 6px 0;
+      font-weight: 900;
+    }
+
+    .sub{
+      margin:0;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    .meta{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top: 10px;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .star{
+      display:inline-flex;
+      gap:6px;
+      align-items:center;
+      color: var(--text);
+      font-weight: 900;
+    }
+    .star svg{width:16px;height:16px}
+
+    .section{
+      margin-top: 16px;
+      border-top: 1px solid var(--divider);
+      padding-top: 16px;
+    }
+    .section h3{
+      margin:0 0 6px 0;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .section p{
+      margin:0;
+      color: var(--muted);
+      font-weight: 650;
+      line-height: 1.45;
+    }
+    .section a{
+      color: var(--link);
+      font-weight: 900;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .rows{
+      margin-top: 14px;
+      border-top: 1px solid var(--divider);
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .row:last-child{border-bottom:none;}
+    .row .left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      flex: 1;
+      min-width: 0;
+    }
+    .row .label{
+      font-weight: 950;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+    }
+    .row .value{
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    .field{
+      width: 100%;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--field);
+      padding: 0 12px;
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .field::placeholder{ color: rgba(107,114,128,.85); font-weight: 650; }
+    .field:focus{
+      outline:none;
+      box-shadow: 0 0 0 4px var(--focus);
+      background: #fff;
+    }
+    .hint{
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .price{
+      margin-top: 10px;
+      border-top: 1px solid var(--divider);
+      padding-top: 14px;
+    }
+    .price-line{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 0;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .total{
+      margin-top: 6px;
+      padding-top: 14px;
+      border-top: 1px solid var(--divider);
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap: 12px;
+    }
+    .total .tlabel{ font-weight: 950; letter-spacing: -0.2px; font-size: 18px; }
+    .total .tvalue{ font-weight: 950; font-size: 20px; }
+
+    .actions{
+      padding: 18px 22px 22px;
+      border-top: 1px solid var(--divider);
+      display:flex;
+      gap: 12px;
+      align-items:center;
+    }
+    .confirm{
+      flex:1;
+      height: 56px;
+      border-radius: 999px;
+      border: none;
+      background: var(--cta);
+      color: var(--ctaText);
+      font-weight: 950;
+      font-size: 16px;
+      letter-spacing: .2px;
+      cursor:pointer;
+      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+    }
+    .confirm:hover{transform: translateY(-1px);}
+    .confirm:active{transform: translateY(0px);}
+    .confirm:focus{outline:none; box-shadow: 0 0 0 4px var(--focus), 0 16px 30px rgba(17,24,39,.18);}
+    .confirm:disabled{
+      cursor: not-allowed;
+      pointer-events: none;
+      transform: none;
+      box-shadow: none;
+      opacity: .72;
+    }
+    .confirm:disabled:hover,
+    .confirm:disabled:active{
+      transform: none;
+    }
+    .confirm.is-confirmed{
+      background: #16a34a;
+      color: #ffffff;
+      box-shadow: 0 16px 30px rgba(22,163,74,.25);
+      opacity: 1;
+    }
+
+    .secondary{
+      height: 56px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      color: var(--text);
+      font-weight: 950;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    dialog{
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      max-width: 560px;
+      width: calc(100% - 28px);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop{ background: rgba(17,24,39,.35); backdrop-filter: blur(2px); }
+    .modal-title{margin:0 0 10px 0; font-size:18px; font-weight: 950;}
+    .modal-text{margin:0; color: var(--muted); font-weight: 650; line-height: 1.55;}
+    .modal-actions{margin-top:14px; display:flex; justify-content:flex-end; gap:10px;}
+    .close{
+      height: 44px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.04);
+      font-weight: 950;
+      cursor:pointer;
+    }
+
+    .error{
+      display:none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(239,68,68,.10);
+      border: 1px solid rgba(239,68,68,.22);
+      color: #991b1b;
+      font-weight: 750;
+      font-size: 13px;
+    }
+    .error.show{display:block;}
+
+    @media (max-width: 520px){
+      .media{height: 190px;}
+      .title{font-size: 22px;}
+      .media-bottom{flex-direction:column; align-items:stretch;}
+      .price-pill{width: 100%;}
+      .actions{flex-direction:column;}
+      .secondary{width:100%;}
+      .row{flex-direction:column; align-items:stretch;}
+    }
+
+    #loading{
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .retry-btn{
+      margin-top: 14px;
+      border: 1px solid rgba(17,24,39,.14);
+      background: #fff;
+      color: #111827;
+      border-radius: 999px;
+      height: 40px;
+      padding: 0 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root"><div id="loading">Loading booking form...</div></div>
+
+  <dialog id="policyDialog">
+    <h3 class="modal-title">Cancellation policy</h3>
+    <p class="modal-text">
+      Free cancellation until <strong id="cancelDate">–</strong> (local time). After that, cancellation may be non-refundable
+      depending on the host's rules and the timing of the cancellation.
+    </p>
+    <div class="modal-actions">
+      <button class="close" type="button" onclick="document.getElementById('policyDialog').close()">Close</button>
+    </div>
+  </dialog>
+
+  <script>
+    /* ── Globals ── */
+    let bookingData = {};
+    let submitState = 'idle';
+    let pendingConfirmTimeoutId = null;
+
+    const VALIDATION_ERROR_TEXT = 'Please fill in your name, a valid email, and phone number.';
+    const CONFIRM_FAILURE_TEXT = 'Unable to confirm booking. Please try again.';
+    const CONFIRM_TIMEOUT_TEXT = 'Confirmation timed out. Please try again.';
+    const CONFIRM_TIMEOUT_MS = 15000;
+
+    /* ── Format helpers ── */
+    const currencySymbols = { USD: '$', UAH: '₴', EUR: '€' };
+    function sym(code) { return currencySymbols[code] || code + ' '; }
+
+    function formatMoney(amount, currency) {
+      const s = sym(currency);
+      return s + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDateRange(checkIn, checkOut) {
+      const ci = new Date(checkIn + 'T00:00:00');
+      const co = new Date(checkOut + 'T00:00:00');
+      const opts = { month: 'short', day: 'numeric' };
+      const ciStr = ci.toLocaleDateString('en-US', opts);
+      const coStr = co.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
+      return `${ciStr} – ${coStr}`;
+    }
+
+    function getCancelDate(checkIn) {
+      const ci = new Date(checkIn + 'T00:00:00');
+      ci.setDate(ci.getDate() - 14);
+      return ci.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    }
+
+    function getConfirmButton() {
+      return document.getElementById('confirmBtn');
+    }
+
+    function getFormError() {
+      return document.getElementById('formError');
+    }
+
+    function clearPendingConfirmTimeout() {
+      if (!pendingConfirmTimeoutId) return;
+      clearTimeout(pendingConfirmTimeoutId);
+      pendingConfirmTimeoutId = null;
+    }
+
+    function setConfirmState(nextState) {
+      submitState = nextState;
+
+      if (nextState !== 'submitting') {
+        clearPendingConfirmTimeout();
+      }
+
+      const confirmBtn = getConfirmButton();
+      if (!confirmBtn) return;
+
+      confirmBtn.classList.remove('is-confirmed');
+
+      if (nextState === 'submitting') {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Confirming...';
+        return;
+      }
+
+      if (nextState === 'confirmed') {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('is-confirmed');
+        confirmBtn.textContent = 'Confirmed';
+        return;
+      }
+
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirm';
+    }
+
+    function showFormError(message) {
+      const err = getFormError();
+      if (!err) return;
+      err.textContent = message;
+      err.classList.add('show');
+    }
+
+    function hideFormError() {
+      const err = getFormError();
+      if (!err) return;
+      err.classList.remove('show');
+      err.textContent = VALIDATION_ERROR_TEXT;
+    }
+
+    function startPendingConfirmTimeout() {
+      clearPendingConfirmTimeout();
+      pendingConfirmTimeoutId = setTimeout(() => {
+        if (submitState !== 'submitting') return;
+        setConfirmState('idle');
+        showFormError(CONFIRM_TIMEOUT_TEXT);
+      }, CONFIRM_TIMEOUT_MS);
+    }
+
+    function isStructuredConfirmationPayload(data) {
+      return !!data &&
+        typeof data === 'object' &&
+        typeof data.confirmation_code === 'string' &&
+        typeof data.check_in === 'string' &&
+        typeof data.check_out === 'string';
+    }
+
+    function normalizeConfirmationPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredConfirmationPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function handleConfirmSuccess(raw) {
+      if (submitState !== 'submitting') return false;
+      const payload = normalizeConfirmationPayload(raw);
+      if (!payload) return false;
+      hideFormError();
+      setConfirmState('confirmed');
+      return true;
+    }
+
+    function handleConfirmFailure(message) {
+      if (submitState !== 'submitting') return;
+      setConfirmState('idle');
+      showFormError(message);
+    }
+
+    /* ── Render ── */
+    function render(data) {
+      bookingData = data;
+      const nightsTotal = formatMoney(data.total_price, data.currency_code);
+      const perNight = formatMoney(data.price_per_night, data.currency_code);
+      const dateRange = formatDateRange(data.check_in, data.check_out);
+      const cancelDate = getCancelDate(data.check_in);
+      const imgUrl = data.image_url || '';
+
+      document.getElementById('cancelDate').textContent = cancelDate;
+
+      document.getElementById('root').innerHTML = `
+        <main class="wrap">
+          <section class="booking-card">
+            <div class="media" ${imgUrl ? `style="background:none"` : ''}>
+              ${imgUrl ? `<style>.media::after{background-image:url('${imgUrl}') !important;}</style>` : ''}
+              <div class="media-top">
+                <span class="badge"><span class="dot"></span> ${data.hotel_name || 'Hotel'}</span>
+              </div>
+              <div class="media-bottom">
+                <div class="price-pill">
+                  <span class="amount">${perNight}</span>
+                  <span class="per">/ night</span>
+                </div>
+              </div>
+            </div>
+
+            <form class="content" id="bookingForm" novalidate>
+              <h2 class="title">Complete your booking</h2>
+              <p class="sub">${data.unit_name || ''}</p>
+
+              ${data.rating ? `
+              <div class="meta">
+                <span class="star">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 17.3l-6.18 3.25 1.18-6.9L1.99 8.98l6.92-1L12 1.7l3.09 6.28 6.92 1-5.01 4.67 1.18 6.9L12 17.3z" fill="currentColor"/></svg>
+                  ${data.rating}
+                </span>
+              </div>` : ''}
+
+              <div class="section">
+                <h3>Free cancellation</h3>
+                <p>Cancel before <strong>${cancelDate}</strong> for a full refund.
+                  <a href="#" onclick="event.preventDefault();document.getElementById('policyDialog').showModal()">Full policy</a>
+                </p>
+              </div>
+
+              <div class="rows">
+                <div class="row">
+                  <div class="left">
+                    <div class="label">Dates</div>
+                    <div class="value">${dateRange}</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="left">
+                    <div class="label">Guests</div>
+                    <div class="value">${data.guests || 1} guest(s)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section">
+                <h3>Guest details</h3>
+                <div class="rows" style="border-top:0; margin-top: 10px;">
+                  <div class="row" style="padding: 12px 0;">
+                    <div class="left">
+                      <div class="label">Full name</div>
+                      <div class="value">Name for the reservation</div>
+                      <input class="field" name="guestName" type="text" autocomplete="name"
+                             placeholder="John Doe" required />
+                    </div>
+                  </div>
+                  <div class="row" style="padding: 12px 0;">
+                    <div class="left">
+                      <div class="label">Email</div>
+                      <div class="value">We'll send the confirmation here</div>
+                      <input class="field" name="email" type="email" inputmode="email" autocomplete="email"
+                             placeholder="name@example.com" required />
+                    </div>
+                  </div>
+                  <div class="row" style="padding: 12px 0;">
+                    <div class="left">
+                      <div class="label">Phone number</div>
+                      <div class="value">In case we need to reach you</div>
+                      <input class="field" name="phone" type="tel" inputmode="tel" autocomplete="tel"
+                             placeholder="+380 XX XXX XX XX" required />
+                    </div>
+                  </div>
+                </div>
+                <div class="hint">Confirm in this form (or press Enter in a field). By confirming, you agree to the house rules and cancellation policy.</div>
+                <div class="error" id="formError">Please fill in your name, a valid email, and phone number.</div>
+              </div>
+
+              <div class="price">
+                <h3 style="margin:0 0 8px 0;">Price details</h3>
+                <div class="price-line">
+                  <span>${data.nights || '–'} night(s) × ${perNight}</span>
+                  <span>${nightsTotal}</span>
+                </div>
+                <div class="total">
+                  <span class="tlabel">Total <span style="text-decoration:underline;text-underline-offset:3px;">${data.currency_code || 'USD'}</span></span>
+                  <span class="tvalue">${nightsTotal}</span>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button class="secondary" type="button" onclick="document.getElementById('policyDialog').showModal()">Terms</button>
+                <button class="confirm" id="confirmBtn" type="submit">Confirm</button>
+              </div>
+            </form>
+          </section>
+        </main>`;
+
+      attachFormHandler();
+      setConfirmState('idle');
+    }
+
+    /* ── Form validation & submission ── */
+    function attachFormHandler() {
+      const form = document.getElementById('bookingForm');
+      if (!form) return;
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (submitState === 'submitting' || submitState === 'confirmed') return;
+        const name = form.elements.guestName.value.trim();
+        const email = form.elements.email.value.trim();
+        const phone = form.elements.phone.value.trim();
+
+        const nameOk = name.length >= 2;
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        const phoneOk = (phone.replace(/\D/g, '')).length >= 8;
+
+        if (!nameOk || !emailOk || !phoneOk) {
+          showFormError(VALIDATION_ERROR_TEXT);
+          if (!nameOk) form.elements.guestName.focus();
+          else if (!emailOk) form.elements.email.focus();
+          else form.elements.phone.focus();
+          return;
+        }
+        hideFormError();
+        setConfirmState('submitting');
+        startPendingConfirmTimeout();
+
+        const params = {
+          unit_id: bookingData.unit_id,
+          check_in: bookingData.check_in,
+          check_out: bookingData.check_out,
+          guests: bookingData.guests || 1,
+          guest_name: name,
+          guest_email: email,
+          guest_phone: phone,
+          total_price: bookingData.total_price,
+          currency_code: bookingData.currency_code || 'USD',
+        };
+
+        if (window.openai && window.openai.callTool) {
+          Promise.resolve(window.openai.callTool('book_confirm', params))
+            .then(handleConfirmSuccess)
+            .catch(() => handleConfirmFailure(CONFIRM_FAILURE_TEXT));
+        } else {
+          try {
+            window.parent.postMessage({
+              jsonrpc: '2.0',
+              method: 'tools/call',
+              params: { name: 'book_confirm', arguments: params }
+            }, '*');
+          } catch (_err) {
+            handleConfirmFailure(CONFIRM_FAILURE_TEXT);
+          }
+        }
+      });
+    }
+
+    const HYDRATION_TIMEOUT_MS = 5000;
+    const HYDRATION_POLL_MS = 250;
+    const HYDRATION_MAX_POLLS = 20;
+    let hydrated = false;
+    let hydrationTimeoutId = null;
+    let hydrationPollId = null;
+
+    function isStructuredBookingFormPayload(data) {
+      return !!data &&
+        typeof data === 'object' &&
+        typeof data.unit_id === 'string' &&
+        typeof data.check_in === 'string' &&
+        typeof data.check_out === 'string';
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredBookingFormPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function clearHydrationTimers() {
+      if (hydrationTimeoutId) {
+        clearTimeout(hydrationTimeoutId);
+        hydrationTimeoutId = null;
+      }
+      if (hydrationPollId) {
+        clearInterval(hydrationPollId);
+        hydrationPollId = null;
+      }
+    }
+
+    function hydrate(raw) {
+      if (hydrated) return true;
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+
+      hydrated = true;
+      clearHydrationTimers();
+      render(payload);
+      return true;
+    }
+
+    function showLoadError() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML =
+        '<div id="loading">Unable to load booking form. Please retry.<br><button class="retry-btn" type="button" onclick="retryHydration()">Retry</button></div>';
+    }
+
+    function probeHydrationSources() {
+      if (hydrated) return true;
+      if (window.openai && hydrate(window.openai.toolOutput)) return true;
+      if (window.openai && typeof window.openai.getToolResult === 'function') {
+        Promise.resolve(window.openai.getToolResult())
+          .then(hydrate)
+          .catch(() => {});
+      }
+      return hydrated;
+    }
+
+    function startHydrationChecks() {
+      clearHydrationTimers();
+      probeHydrationSources();
+
+      let polls = 0;
+      hydrationPollId = setInterval(() => {
+        polls += 1;
+        if (probeHydrationSources() || polls >= HYDRATION_MAX_POLLS) {
+          clearInterval(hydrationPollId);
+          hydrationPollId = null;
+        }
+      }, HYDRATION_POLL_MS);
+
+      hydrationTimeoutId = setTimeout(showLoadError, HYDRATION_TIMEOUT_MS);
+    }
+
+    function retryHydration() {
+      if (hydrated) return;
+      document.getElementById('root').innerHTML = '<div id="loading">Retrying...</div>';
+      startHydrationChecks();
+    }
+    window.retryHydration = retryHydration;
+
+    /* ── Listen for tool results ── */
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.jsonrpc !== '2.0' || msg.method !== 'ui/notifications/tool-result') return;
+      handleConfirmSuccess(msg);
+      hydrate(msg);
+    });
+
+    startHydrationChecks();
+  </script>
+</body>
+</html>
