@@ -1,36 +1,43 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Unit Card</title>
   <style>
-    :root{
-      --text:#0b1220;
-      --white:#fff;
-      --muted: rgba(255,255,255,.82);
-      --shadowSoft: 0 14px 34px rgba(0,0,0,.14);
+    :root {
+      --text: #0b1220;
+      --white: #fff;
+      --muted: rgba(255, 255, 255, .82);
+      --shadowSoft: 0 14px 34px rgba(0, 0, 0, .14);
       --radius: 34px;
       --btnText: #111827;
-      --focus: rgba(255,255,255,.25);
-      --border: rgba(17,24,39,.12);
-      --divider: rgba(17,24,39,.10);
+      --focus: rgba(255, 255, 255, .25);
+      --border: rgba(17, 24, 39, .12);
+      --divider: rgba(17, 24, 39, .10);
       --modalText: #111827;
       --modalMuted: #6b7280;
     }
 
     html,
-    *{box-sizing:border-box}
-    html{ background: transparent; }
-    body{
-      margin:0;
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      background: transparent;
+    }
+
+    body {
+      margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background: transparent;
       color: var(--text);
       padding: 0;
     }
 
-    .cards-container{
+    .cards-container {
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -38,7 +45,7 @@
       background: transparent;
     }
 
-    #root{
+    #root {
       background: transparent;
       padding: 0;
       border: 0;
@@ -46,122 +53,125 @@
     }
 
     @supports not (gap: 1rem) {
-      .room-card + .room-card{ margin-top: 16px; }
+      .room-card+.room-card {
+        margin-top: 16px;
+      }
     }
 
-    .room-card{
+    .room-card {
       width: 100%;
       border-radius: var(--radius);
-      overflow:hidden;
-      position:relative;
-      background:#111;
+      overflow: hidden;
+      position: relative;
+      background: #111;
+      cursor: pointer;
     }
 
-    .room-media{
-      position:relative;
+    .room-media {
+      position: relative;
       height: 420px;
       background:
-        radial-gradient(1200px 700px at 75% 15%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%),
+        radial-gradient(1200px 700px at 75% 15%, rgba(255, 255, 255, .20), rgba(255, 255, 255, 0) 55%),
         linear-gradient(135deg, #101827 0%, #2a3f67 48%, #c89b57 100%);
     }
 
-    .room-media::before{
-      content:"";
-      position:absolute;
-      inset:0;
+    .room-media::before {
+      content: "";
+      position: absolute;
+      inset: 0;
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
-      pointer-events:none;
+      pointer-events: none;
     }
 
-    .room-media::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 100%);
-      pointer-events:none;
+    .room-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, .55) 100%);
+      pointer-events: none;
     }
 
-    .content{
-      position:absolute;
+    .content {
+      position: absolute;
       left: 26px;
       right: 26px;
       bottom: 22px;
       color: var(--white);
-      display:flex;
-      flex-direction:column;
+      display: flex;
+      flex-direction: column;
       gap: 14px;
       z-index: 1;
     }
 
-    .title{
-      margin:0;
+    .title {
+      margin: 0;
       font-size: clamp(28px, 3.2vw, 44px);
-      line-height:1.05;
-      letter-spacing:-.6px;
+      line-height: 1.05;
+      letter-spacing: -.6px;
       font-weight: 900;
-      text-shadow: 0 14px 40px rgba(0,0,0,.45);
+      text-shadow: 0 14px 40px rgba(0, 0, 0, .45);
     }
 
-    .subtitle{
-      margin:0;
+    .subtitle {
+      margin: 0;
       font-size: 18px;
       font-weight: 650;
       color: var(--muted);
-      letter-spacing:-.2px;
-      text-shadow: 0 12px 34px rgba(0,0,0,.38);
+      letter-spacing: -.2px;
+      text-shadow: 0 12px 34px rgba(0, 0, 0, .38);
     }
 
-    .amenities{
-      display:flex;
-      align-items:center;
+    .amenities {
+      display: flex;
+      align-items: center;
       gap: 14px;
-      flex-wrap:wrap;
+      flex-wrap: wrap;
       font-size: 18px;
       font-weight: 650;
-      color: rgba(255,255,255,.85);
-      text-shadow: 0 12px 30px rgba(0,0,0,.35);
+      color: rgba(255, 255, 255, .85);
+      text-shadow: 0 12px 30px rgba(0, 0, 0, .35);
     }
 
-    .amenities .item{
-      display:inline-flex;
-      align-items:center;
+    .amenities .item {
+      display: inline-flex;
+      align-items: center;
       gap: 8px;
     }
 
-    .amenities svg{
+    .amenities svg {
       width: 20px;
       height: 20px;
       opacity: .9;
-      filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
+      filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .25));
     }
 
-    .divider{
-      width:1px;
+    .divider {
+      width: 1px;
       height: 18px;
-      background: rgba(255,255,255,.28);
+      background: rgba(255, 255, 255, .28);
       border-radius: 999px;
       margin: 0 4px;
     }
 
-    .cta-row{
-      display:flex;
+    .cta-row {
+      display: flex;
       gap: 16px;
-      align-items:center;
+      align-items: center;
       margin-top: 4px;
     }
 
-    .price-pill{
+    .price-pill {
       height: 68px;
       min-width: 180px;
       padding: 0 20px;
       border-radius: 22px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background: rgba(255,255,255,.18);
-      border: 1px solid rgba(255,255,255,.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .18);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       box-shadow: var(--shadowSoft);
@@ -170,7 +180,7 @@
       font-size: 38px;
     }
 
-    .cta-buttons{
+    .cta-buttons {
       flex: 1;
       display: flex;
       align-items: center;
@@ -178,112 +188,142 @@
     }
 
     .reserve,
-    .details{
+    .details {
       height: 68px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.20);
+      border: 1px solid rgba(255, 255, 255, .20);
       box-shadow: var(--shadowSoft);
       font-weight: 900;
       font-size: 22px;
       letter-spacing: -0.2px;
-      cursor:pointer;
+      cursor: pointer;
       transition: transform .15s ease;
     }
 
-    .reserve{
+    .reserve {
       flex: 1;
-      background: rgba(255,255,255,.94);
+      background: rgba(255, 255, 255, .94);
       color: var(--btnText);
     }
 
-    .details{
+    .details {
       min-width: 190px;
       padding: 0 24px;
-      background: rgba(17,24,39,.42);
+      background: rgba(17, 24, 39, .42);
       color: #fff;
     }
 
     .reserve:hover,
-    .details:hover{ transform: translateY(-1px); }
+    .details:hover {
+      transform: translateY(-1px);
+    }
 
     .reserve:active,
-    .details:active{ transform: translateY(0px); }
+    .details:active {
+      transform: translateY(0px);
+    }
 
     .reserve:focus,
-    .details:focus{
-      outline:none;
+    .details:focus {
+      outline: none;
       box-shadow: 0 0 0 5px var(--focus), var(--shadowSoft);
     }
 
     .reserve:disabled,
-    .details:disabled{
+    .details:disabled {
       cursor: wait;
       opacity: .85;
       transform: none;
     }
 
-    .room-card::after{
-      content:"";
-      position:absolute;
-      inset:0;
+    .room-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
       border-radius: var(--radius);
-      pointer-events:none;
-      border: 1px solid rgba(255,255,255,.10);
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, .10);
     }
 
     .type-badge,
-    .guests-badge{
+    .guests-badge {
       position: absolute;
       top: 16px;
       z-index: 2;
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:10px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
       border-radius: 999px;
-      background: rgba(255,255,255,.22);
-      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255, 255, 255, .22);
+      border: 1px solid rgba(255, 255, 255, .22);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      color:#fff;
+      color: #fff;
       font-weight: 700;
       font-size: 14px;
-      text-shadow: 0 4px 12px rgba(0,0,0,.3);
+      text-shadow: 0 4px 12px rgba(0, 0, 0, .3);
     }
 
-    .type-badge{ left: 16px; }
-    .guests-badge{ right: 16px; }
-    .guests-badge svg{ width:16px; height:16px; }
+    .type-badge {
+      left: 16px;
+    }
 
-    dialog{
+    .guests-badge {
+      right: 16px;
+    }
+
+    .guests-badge svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    dialog {
       border: 1px solid var(--border);
       border-radius: 22px;
       padding: 18px;
       max-width: 560px;
       width: calc(100% - 28px);
-      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .18);
       color: var(--modalText);
     }
 
-    dialog::backdrop{
-      background: rgba(17,24,39,.45);
+    dialog::backdrop {
+      background: rgba(17, 24, 39, .45);
       backdrop-filter: blur(2px);
     }
 
-    .modal-title{ margin:0 0 10px 0; font-size:18px; font-weight: 950; }
-    .modal-text{ margin:0; color: var(--modalMuted); font-weight: 650; line-height: 1.55; }
-    .modal-actions{ margin-top:14px; display:flex; justify-content:flex-end; gap:10px; }
-    .close{
+    .modal-title {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .modal-text {
+      margin: 0;
+      color: var(--modalMuted);
+      font-weight: 650;
+      line-height: 1.55;
+    }
+
+    .modal-actions {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .close {
       height: 44px;
       padding: 0 16px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(17,24,39,.04);
+      background: rgba(17, 24, 39, .04);
       font-weight: 950;
-      cursor:pointer;
+      cursor: pointer;
     }
 
-    #detailsDialog{
+    #detailsDialog {
       margin: 0;
       max-width: 100vw;
       width: 100vw;
@@ -296,7 +336,7 @@
       background: #fff;
     }
 
-    .details-shell{
+    .details-shell {
       max-height: 100dvh;
       min-height: 100dvh;
       overflow-y: auto;
@@ -304,7 +344,7 @@
       color: #111827;
     }
 
-    .details-header{
+    .details-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -312,7 +352,7 @@
       margin-bottom: 14px;
     }
 
-    .details-title{
+    .details-title {
       margin: 0;
       font-size: clamp(26px, 2.8vw, 44px);
       line-height: 1.05;
@@ -320,68 +360,90 @@
       font-weight: 900;
     }
 
-    .details-subtitle{
+    .details-subtitle {
       margin: 6px 0 0 0;
       color: #4b5563;
       font-size: 18px;
       font-weight: 700;
     }
 
-    .details-section{
+    .details-section {
       margin-top: 20px;
       padding-top: 20px;
       border-top: 1px solid var(--divider);
     }
 
-    .details-section h3{
+    .details-section h3 {
       margin: 0 0 12px 0;
       font-size: 32px;
       letter-spacing: -.2px;
       font-weight: 900;
     }
 
-    .details-gallery{
+    .details-gallery {
       display: grid;
       grid-template-columns: 2fr 1fr;
+      grid-template-rows: 1fr 1fr;
       gap: 10px;
       margin-top: 8px;
     }
 
     .details-gallery-main,
-    .details-gallery-side-item{
+    .details-gallery-side-item {
       position: relative;
-      border-radius: 16px;
+      border-radius: 0;
       overflow: hidden;
       background: #eef2f7;
     }
 
-    .details-gallery-main{ aspect-ratio: 1 / 1; }
-
-    .details-gallery-side{
-      display: grid;
-      grid-template-rows: 1fr 1fr;
-      gap: 10px;
+    .details-gallery-main {
+      grid-row: 1 / -1;
+      position: relative;
+      min-height: 0;
+      border-radius: 16px 0 0 16px;
     }
 
-    .details-gallery-side-item{ aspect-ratio: 1 / 1; }
+    .details-gallery-main img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-    .details-gallery img{
+    .details-gallery-side {
+      display: contents;
+    }
+
+    .details-gallery-side-item {
+      aspect-ratio: 1 / 1;
+    }
+
+    .details-gallery-side-item:first-child {
+      border-radius: 0 16px 0 0;
+    }
+
+    .details-gallery-side-item:last-child {
+      border-radius: 0 0 16px 0;
+    }
+
+    .details-gallery img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .details-description{
+    .details-description {
       margin: 0;
       color: #374151;
       font-size: 17px;
-      line-height: 1.6;
-      font-weight: 600;
+      line-height: 24px;
+      font-weight: 400;
       white-space: pre-wrap;
     }
 
-    .review-inline{
+    .review-inline {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -390,46 +452,46 @@
       color: #111827;
     }
 
-    .review-inline svg{
+    .review-inline svg {
       width: 18px;
       height: 18px;
     }
 
-    .amenities-grid{
+    .amenities-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px 16px;
     }
 
-    .amenity-item{
+    .amenity-item {
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: 17px;
-      font-weight: 700;
+      font-weight: 500;
       color: #1f2937;
     }
 
-    .amenity-item svg{
+    .amenity-item svg {
       width: 18px;
       height: 18px;
       flex: 0 0 auto;
       color: #374151;
     }
 
-    .reviews-list{
+    .reviews-list {
       display: grid;
       gap: 12px;
     }
 
-    .review-card{
+    .review-card {
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 12px;
-      background: rgba(17,24,39,.02);
+      background: rgba(17, 24, 39, .02);
     }
 
-    .review-head{
+    .review-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -437,18 +499,18 @@
       margin-bottom: 8px;
     }
 
-    .review-author{
+    .review-author {
       font-weight: 900;
       font-size: 16px;
     }
 
-    .review-meta{
+    .review-meta {
       color: #4b5563;
       font-weight: 700;
       font-size: 13px;
     }
 
-    .review-comment{
+    .review-comment {
       margin: 0;
       color: #374151;
       font-size: 15px;
@@ -456,14 +518,14 @@
       font-weight: 600;
     }
 
-    .details-empty{
+    .details-empty {
       color: #6b7280;
       font-size: 16px;
       font-weight: 700;
       margin: 0;
     }
 
-    .map-wrap{
+    .map-wrap {
       border-radius: 16px;
       border: 1px solid var(--border);
       overflow: hidden;
@@ -472,35 +534,35 @@
       min-height: 240px;
     }
 
-    .map-wrap iframe{
+    .map-wrap iframe {
       width: 100%;
       height: 100%;
       border: 0;
       display: block;
     }
 
-    .host-grid{
+    .host-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
     }
 
     .host-card,
-    .host-meta-card{
+    .host-meta-card {
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 14px;
-      background: rgba(17,24,39,.02);
+      background: rgba(17, 24, 39, .02);
     }
 
-    .host-id{
+    .host-id {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-bottom: 10px;
     }
 
-    .host-avatar{
+    .host-avatar {
       width: 68px;
       height: 68px;
       border-radius: 999px;
@@ -508,17 +570,28 @@
       background: #e5e7eb;
     }
 
-    .host-name{ margin:0; font-size: 22px; font-weight: 900; letter-spacing: -.2px; }
-    .host-small{ margin: 4px 0 0 0; color:#6b7280; font-weight:700; font-size: 14px; }
+    .host-name {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -.2px;
+    }
 
-    .host-badges{
+    .host-small {
+      margin: 4px 0 0 0;
+      color: #6b7280;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .host-badges {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       margin-top: 8px;
     }
 
-    .host-badge{
+    .host-badge {
       padding: 8px 10px;
       border-radius: 999px;
       border: 1px solid var(--border);
@@ -528,35 +601,35 @@
       color: #374151;
     }
 
-    .things-tabs{
+    .things-tabs {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 12px;
     }
 
-    .thing-tab{
+    .thing-tab {
       height: 42px;
       padding: 0 14px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(17,24,39,.04);
+      background: rgba(17, 24, 39, .04);
       color: #111827;
       font-weight: 850;
       cursor: pointer;
     }
 
-    .thing-tab.active{
+    .thing-tab.active {
       background: #111827;
       color: #fff;
       border-color: #111827;
     }
 
-    .thing-content{
+    .thing-content {
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 14px;
-      background: rgba(17,24,39,.02);
+      background: rgba(17, 24, 39, .02);
       color: #374151;
       font-size: 16px;
       line-height: 1.6;
@@ -564,14 +637,14 @@
       min-height: 100px;
     }
 
-    .details-reserve-row{
+    .details-reserve-row {
       margin-top: 24px;
       display: flex;
       justify-content: flex-end;
       gap: 10px;
     }
 
-    .details-reserve{
+    .details-reserve {
       min-width: 220px;
       height: 56px;
       border-radius: 999px;
@@ -584,12 +657,12 @@
       /*box-shadow: 0 16px 30px rgba(17,24,39,.18);*/
     }
 
-    .details-reserve:disabled{
+    .details-reserve:disabled {
       opacity: .75;
       cursor: wait;
     }
 
-    #loading{
+    #loading {
       text-align: center;
       padding: 60px 20px;
       color: #6b7280;
@@ -597,9 +670,9 @@
       font-weight: 600;
     }
 
-    .retry-btn{
+    .retry-btn {
       margin-top: 14px;
-      border: 1px solid rgba(17,24,39,.14);
+      border: 1px solid rgba(17, 24, 39, .14);
       background: #fff;
       color: #111827;
       border-radius: 999px;
@@ -609,54 +682,108 @@
       cursor: pointer;
     }
 
-    .reserve-error{
+    .reserve-error {
       display: none;
       width: min(1120px, calc(100% - 24px));
       margin: 8px auto 12px;
       padding: 10px 12px;
       border-radius: 12px;
-      background: rgba(239,68,68,.10);
-      border: 1px solid rgba(239,68,68,.22);
+      background: rgba(239, 68, 68, .10);
+      border: 1px solid rgba(239, 68, 68, .22);
       color: #991b1b;
       font-size: 14px;
       font-weight: 700;
     }
 
-    .reserve-error.show{ display: block; }
-
-    @media (max-width: 920px){
-      .room-media{height: 380px;}
-      .content{left: 18px; right: 18px; bottom: 18px;}
-      .price-pill{min-width: 150px; height: 60px; font-size: 32px;}
-      .reserve,
-      .details{height: 60px; font-size: 20px;}
-      .amenities{font-size: 16px;}
-      .details-shell{padding: 0;}
-      .details-section h3{font-size: 26px;}
-      .host-grid{grid-template-columns: 1fr;}
+    .reserve-error.show {
+      display: block;
     }
 
-    @media (max-width: 680px){
-      .cta-row{flex-direction: column; align-items: stretch;}
-      .price-pill{width: 100%;}
-      .cta-buttons{width: 100%;}
+    @media (max-width: 920px) {
+      .room-media {
+        height: 380px;
+      }
+
+      .content {
+        left: 18px;
+        right: 18px;
+        bottom: 18px;
+      }
+
+      .price-pill {
+        min-width: 150px;
+        height: 60px;
+        font-size: 32px;
+      }
+
       .reserve,
-      .details{flex: 1; min-width: 0; font-size: 18px;}
-      .amenities{gap: 10px;}
-      .divider{display:none;}
-      .details-shell{padding: 16px;}
-      .details-gallery{grid-template-columns: 1fr;}
-      .details-gallery-side{grid-template-columns: 1fr 1fr; grid-template-rows: 1fr;}
-      .amenities-grid{grid-template-columns: 1fr;}
-      .details-reserve-row{justify-content: stretch;}
-      .details-reserve{width: 100%;}
-      .details-title{font-size: 32px;}
+      .details {
+        height: 60px;
+        font-size: 20px;
+      }
+
+      .amenities {
+        font-size: 16px;
+      }
+
+      .details-shell {
+        padding: 0;
+      }
+
+      .details-section h3 {
+        font-size: 26px;
+      }
+
+      .host-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+
+      .reserve,
+      .details {
+        font-size: 18px;
+      }
+
+      .amenities {
+        gap: 10px;
+      }
+
+      .divider {
+        display: none;
+      }
+
+      .details-shell {
+        padding: 16px;
+      }
+
+
+
+      .amenities-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .details-reserve-row {
+        justify-content: stretch;
+      }
+
+      .details-reserve {
+        width: 100%;
+      }
+
+      .details-title {
+        font-size: 32px;
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="reserveError" class="reserve-error" role="alert"></div>
-  <div id="root"><div id="loading">Loading rooms...</div></div>
+  <div id="root">
+    <div id="loading">Loading rooms...</div>
+  </div>
 
   <dialog id="detailsDialog" aria-label="Room details">
     <div id="detailsDialogContent" class="details-shell"></div>
@@ -664,17 +791,23 @@
 
   <script>
     const ICONS = {
+      mountain: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mountain-snow-icon lucide-mountain-snow"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/><path d="M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19"/></svg>`,
+      ev_charger: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ev-charger-icon lucide-ev-charger"><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0v-6.998a2 2 0 0 0-.59-1.42L18 5"/><path d="M14 21V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16"/><path d="M2 21h13"/><path d="M3 7h11"/><path d="m9 11-2 3h3l-2 3"/></svg>`,
       bed: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 10h16v8H4v-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 10V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 18v2M4 18v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-      bath: `<svg viewBox="0 0 24 24" fill="none"><path d="M7 7a3 3 0 0 1 6 0v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 14h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M6 21v-2M18 21v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+      bath: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bath-icon lucide-bath"><path d="M10 4 8 6"/><path d="M17 19v2"/><path d="M2 12h20"/><path d="M7 19v2"/><path d="M9 5 7.621 3.621A2.121 2.121 0 0 0 4 5v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>`,
       guest: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M5 20c0-3.3 2.7-6 7-6s7 2.7 7 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
       star: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 17.3l-6.18 3.25 1.18-6.9L1.99 8.98l6.92-1L12 1.7l3.09 6.28 6.92 1-5.01 4.67 1.18 6.9L12 17.3z" fill="currentColor"/></svg>`,
-      wifi: `<svg viewBox="0 0 24 24" fill="none"><path d="M2 8c5.5-4 14.5-4 20 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12c4-3 10-3 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 16c2.5-2 5.5-2 8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>`,
-      kitchen: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="2"/><path d="M9 4v16M4 10h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-      parking: `<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h6a4 4 0 0 1 0 8H5z" stroke="currentColor" stroke-width="2"/><path d="M5 12v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+      wifi: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wifi-icon lucide-wifi"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/></svg>`,
+      kitchen: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cooking-pot-icon lucide-cooking-pot"><path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/></svg>`,
+      parking: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-parking-icon lucide-square-parking"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></svg>`,
       water: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3c2.5 3.2 5 6.1 5 9a5 5 0 0 1-10 0c0-2.9 2.5-5.8 5-9z" stroke="currentColor" stroke-width="2"/></svg>`,
-      washer: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/><path d="M8 6h1M11 6h1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-      shield: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.8-3 7.7-7 9-4-1.3-7-4.2-7-9V6l7-3z" stroke="currentColor" stroke-width="2"/></svg>`,
+      washer: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-washing-machine-icon lucide-washing-machine"><path d="M3 6h3"/><path d="M17 6h.01"/><rect width="18" height="20" x="3" y="2" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M12 18a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 1 0-5"/></svg>`,
+      shield: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check-icon lucide-shield-check"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>`,
       check: `<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      pool: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-waves-icon lucide-waves"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>`,
+      shampoo: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bubbles-icon lucide-bubbles"><path d="M7.001 15.085A1.5 1.5 0 0 1 9 16.5"/><circle cx="18.5" cy="8.5" r="3.5"/><circle cx="7.5" cy="16.5" r="5.5"/><circle cx="7.5" cy="4.5" r="2.5"/></svg>`,
+      soap: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-soap-dispenser-droplet-icon lucide-soap-dispenser-droplet"><path d="M10.5 2v4"/><path d="M14 2H7a2 2 0 0 0-2 2"/><path d="M19.29 14.76A6.67 6.67 0 0 1 17 11a6.6 6.6 0 0 1-2.29 3.76c-1.15.92-1.71 2.04-1.71 3.19 0 2.22 1.8 4.05 4 4.05s4-1.83 4-4.05c0-1.16-.57-2.26-1.71-3.19"/><path d="M9.607 21H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h7V7a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></svg>`,
+      bidet: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-toilet-icon lucide-toilet"><path d="M7 12h13a1 1 0 0 1 1 1 5 5 0 0 1-5 5h-.598a.5.5 0 0 0-.424.765l1.544 2.47a.5.5 0 0 1-.424.765H5.402a.5.5 0 0 1-.424-.765L7 18"/><path d="M8 18a5 5 0 0 1-5-5V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8"/></svg>`,
     };
 
     const RESERVE_CALL_TIMEOUT_MS = 10000;
@@ -834,9 +967,14 @@
     function getAmenityIcon(amenity) {
       const key = String(amenity || '').toLowerCase();
       if (key.includes('wifi')) return ICONS.wifi;
+      if (key.includes('charger')) return ICONS.ev_charger;
       if (key.includes('kitchen') || key.includes('coffee') || key.includes('microwave') || key.includes('dishwasher') || key.includes('refrigerator')) return ICONS.kitchen;
-      if (key.includes('parking') || key.includes('charger')) return ICONS.parking;
-      if (key.includes('pool') || key.includes('hot tub') || key.includes('sauna')) return ICONS.water;
+      if (key.includes('parking')) return ICONS.parking;
+      if (key.includes('pool')) return ICONS.pool;
+      if (key.includes('shampoo')) return ICONS.shampoo;
+      if (key.includes('soap')) return ICONS.soap;
+      if (key.includes('bidet')) return ICONS.bidet;
+      if (key.includes('hot tub') || key.includes('sauna')) return ICONS.water;
       if (key.includes('washer') || key.includes('dryer')) return ICONS.washer;
       if (key.includes('security') || key.includes('alarm') || key.includes('camera') || key.includes('fire') || key.includes('first aid')) return ICONS.shield;
       return ICONS.check;
@@ -987,9 +1125,7 @@
     function buildCard(unit, bookingContext) {
       const { beds, baths } = parseBedConfig(unit.bed_config);
       const imgUrl = sanitizeUrl(unit.image_url || (unit.images && unit.images[0]) || '');
-      const priceDisplay = formatPrice(unit.price_per_night, unit.currency_code);
-      const hotelName = unit.hotel_name || '';
-      const unitType = unit.type || '';
+      const priceDisplayValue = formatPrice(unit.price_per_night, unit.currency_code);
       const maxGuests = unit.max_guests || '';
 
       const reserveParams = {
@@ -1000,15 +1136,13 @@
       };
 
       return `
-        <article class="room-card" data-unit-id="${escapeHtml(unit.id)}">
+        <article class="room-card" data-unit-id="${escapeHtml(unit.id)}" onclick="onMoreDetails('${escapeHtml(unit.id)}')">
           <div class="room-media">
             ${imgUrl ? `<style>.room-card[data-unit-id="${escapeHtml(unit.id)}"] .room-media::before{background-image:url('${imgUrl}');}</style>` : ''}
-            ${unitType ? `<span class="type-badge">${escapeHtml(unitType)}</span>` : ''}
             ${maxGuests ? `<span class="guests-badge">${ICONS.guest} Up to ${escapeHtml(maxGuests)}</span>` : ''}
             <div class="content">
               <div>
                 <h1 class="title">${escapeHtml(unit.name)}</h1>
-                ${hotelName ? `<p class="subtitle">${escapeHtml(hotelName)}</p>` : ''}
               </div>
 
               <div class="amenities">
@@ -1018,10 +1152,9 @@
               </div>
 
               <div class="cta-row">
-                <div class="price-pill">${escapeHtml(priceDisplay)}</div>
+                <div class="price-pill">${escapeHtml(priceDisplayValue)}/night</div>
                 <div class="cta-buttons">
-                  <button class="details" type="button" aria-label="More details for ${escapeHtml(unit.name)}" onclick="onMoreDetails('${escapeHtml(unit.id)}')">More</button>
-                  <button class="reserve" type="button" aria-label="Reserve ${escapeHtml(unit.name)}" onclick='onReserve(${JSON.stringify(reserveParams)})'>Reserve</button>
+                  <button class="reserve" type="button" aria-label="Reserve ${escapeHtml(unit.name)}" onclick='event.stopPropagation(); onReserve(${JSON.stringify(reserveParams)})'>Reserve</button>
                 </div>
               </div>
             </div>
@@ -1053,15 +1186,15 @@
       const reviews = Array.isArray(unit.extended_reviews) ? unit.extended_reviews : [];
       const reviewsMarkup = reviews.length
         ? `<div class="reviews-list">${reviews.map((review) => {
-            const ratingPart = typeof review.rating === 'number' ? `${review.rating.toFixed(1)} ★` : '—';
-            return `<article class="review-card">
+          const ratingPart = typeof review.rating === 'number' ? `${review.rating.toFixed(1)} ★` : '—';
+          return `<article class="review-card">
               <div class="review-head">
                 <div class="review-author">${escapeHtml(review.author || 'Guest')}</div>
                 <div class="review-meta">${escapeHtml(review.date || '')} · ${escapeHtml(ratingPart)}</div>
               </div>
               <p class="review-comment">${escapeHtml(review.comment || '')}</p>
             </article>`;
-          }).join('')}</div>`
+        }).join('')}</div>`
         : '<p class="details-empty">No reviews yet.</p>';
 
       const mapInfo = unit.map || {};
@@ -1261,7 +1394,7 @@
       if (window.openai && typeof window.openai.getToolResult === 'function') {
         Promise.resolve(window.openai.getToolResult())
           .then(hydrate)
-          .catch(() => {});
+          .catch(() => { });
       }
       return hydrated;
     }
@@ -1314,4 +1447,5 @@
     startHydrationChecks();
   </script>
 </body>
+
 </html>
