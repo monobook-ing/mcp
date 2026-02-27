@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -153,7 +153,7 @@ def search_rooms(
 
     def build_query(include_country: bool):
         q = supabase.table("mvp_unit").select(
-            "*, mvp_accommodation!inner(name, city, country, rating, image_url, lat, lng)"
+            "*, mvp_accommodation!inner(name, city, state, country, rating, image_url, lat, lng)"
         )
 
         if hotel_name:
@@ -184,6 +184,43 @@ def search_rooms(
             units = relaxed_units
             relaxed_country_filter = True
 
+    def parse_rating(value):
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def get_cancel_date_text(raw_check_in: str) -> str:
+        if not raw_check_in:
+            return "14 days before check-in"
+        try:
+            check_in_date = date.fromisoformat(raw_check_in)
+            cancel_date = check_in_date - timedelta(days=14)
+            return f"{cancel_date.strftime('%B')} {cancel_date.day}"
+        except ValueError:
+            return "14 days before check-in"
+
+    def derive_safety(amenities: list[str]) -> str:
+        amenity_blob = " ".join(str(a).lower() for a in amenities)
+        lines = []
+        if "smoke alarm not reported" in amenity_blob:
+            lines.append("Smoke alarm not reported")
+        elif "smoke alarm" in amenity_blob:
+            lines.append("Smoke alarm available")
+
+        if "carbon monoxide alarm" in amenity_blob:
+            lines.append("Carbon monoxide alarm available")
+        if "camera" in amenity_blob or "security camera" in amenity_blob:
+            lines.append("Exterior security cameras on property")
+        if "fire extinguisher" in amenity_blob:
+            lines.append("Fire extinguisher available")
+        if "first aid kit" in amenity_blob:
+            lines.append("First aid kit available")
+
+        if not lines:
+            return "No special safety notes provided by host."
+        return "\n".join(lines)
+
     structured = {
         "units": [
             {
@@ -200,6 +237,63 @@ def search_rooms(
                 "amenities": u.get("amenities", []),
                 "hotel_name": u["mvp_accommodation"]["name"],
                 "hotel_rating": u["mvp_accommodation"]["rating"],
+                "location": {
+                    "city": u["mvp_accommodation"].get("city"),
+                    "state": u["mvp_accommodation"].get("state"),
+                    "country": u["mvp_accommodation"].get("country"),
+                    "lat": u["mvp_accommodation"].get("lat"),
+                    "lng": u["mvp_accommodation"].get("lng"),
+                },
+                "review_summary": {
+                    "rating": parse_rating(u["mvp_accommodation"].get("rating")),
+                    "review_count": 0,
+                    "text": (
+                        f"{parse_rating(u['mvp_accommodation'].get('rating')):.2f}"
+                        if parse_rating(u["mvp_accommodation"].get("rating")) is not None
+                        else "No reviews yet"
+                    ),
+                },
+                "host": {
+                    "name": u["mvp_accommodation"].get("name") or "Host",
+                    "years_hosting": 1,
+                    "response_time": "Responds within a few days or more",
+                    "is_superhost": bool(
+                        (parse_rating(u["mvp_accommodation"].get("rating")) or 0) >= 4.8
+                    ),
+                    "avatar_url": (
+                        u["mvp_accommodation"].get("image_url")
+                        or (u["images"][0] if u.get("images") else "")
+                    ),
+                },
+                "things_to_know": {
+                    "cancellation": (
+                        "Free cancellation until "
+                        f"{get_cancel_date_text(check_in)} (local time). "
+                        "After that, cancellation may be non-refundable depending on host rules."
+                    ),
+                    "house_rules": (
+                        "Check-in after 3:00 PM\n"
+                        "Checkout before 11:00 AM\n"
+                        f"Maximum guests: {u.get('max_guests') or 1}"
+                    ),
+                    "safety": derive_safety(u.get("amenities", [])),
+                },
+                "extended_reviews": [],
+                "map": {
+                    "lat": u["mvp_accommodation"].get("lat"),
+                    "lng": u["mvp_accommodation"].get("lng"),
+                    "label": ", ".join(
+                        [
+                            p
+                            for p in [
+                                u["mvp_accommodation"].get("city"),
+                                u["mvp_accommodation"].get("state"),
+                                u["mvp_accommodation"].get("country"),
+                            ]
+                            if p
+                        ]
+                    ),
+                },
             }
             for u in units
         ],
@@ -213,7 +307,7 @@ def search_rooms(
         "content": [
             {
                 "type": "text",
-                "text": f"Found {len(units)} room(s). To reserve, ask the user to click Reserve Now in the room card. Do not call booking tools directly.",
+                "text": f"Found {len(units)} room(s). To reserve, ask the user to click Reserve in the room card. Do not call booking tools directly.",
             }
         ],
         "structuredContent": structured,
