@@ -1,10 +1,13 @@
 import os
 import re
 import uuid
+import json
+import logging
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
+from urllib import request, error
 
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +19,8 @@ from fastmcp import FastMCP
 from db import supabase
 
 # ── Server ──────────────────────────────────────────────────────────────────
+
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP(
     name="vysota890-booking",
@@ -43,6 +48,104 @@ app = create_app()
 UNIT_CARD_WIDGET_URI = "ui://widget/unit-card.html"
 BOOKING_FORM_WIDGET_URI = "ui://widget/booking-form.html"
 BOOKING_CONFIRMATION_WIDGET_URI = "ui://widget/booking-confirmation.html"
+
+MONOSEND_EMAILS_URL = "https://api.monosend.io/emails"
+MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
+MONOSEND_FROM_EMAIL = "noreply@monosend.email"
+MONOSEND_API_KEY = os.getenv("API_KEY", "mono_bYguadb30GKyZ49gv0MxnJdgzG2xpHupQNw3Szbf87o")
+MONOSEND_TIMEOUT_SECONDS = 10
+
+
+def _build_monosend_payload(
+    *,
+    guest_email: str,
+    hotel_name: str,
+    unit_name: str,
+    confirmation_code: str,
+    guest_name: str,
+    guest_phone: str,
+    guests: int,
+    check_in: date,
+    check_out: date,
+    total_price: float,
+    currency_code: str,
+) -> dict:
+    first_name = guest_name.strip().split(" ", 1)[0] if guest_name.strip() else guest_name
+    return {
+        "to": [guest_email],
+        "from": MONOSEND_FROM_EMAIL,
+        "subject": f"Thanks! Your booking is confirmed at {hotel_name}",
+        "template": {
+            "id": MONOSEND_TEMPLATE_ID,
+            "variables": {
+                "hotel_unit_title": unit_name,
+                "bookingNumber": confirmation_code,
+                "firstName": first_name or guest_name,
+                "email": guest_email,
+                "phoneNumber": guest_phone,
+                "guestCount": str(guests),
+                "checkIn": check_in.isoformat(),
+                "checkOut": check_out.isoformat(),
+                "total": f"{total_price:.2f} {currency_code}",
+                "companyName": hotel_name,
+            },
+        },
+    }
+
+
+def _send_booking_confirmation_email(
+    *,
+    guest_email: str,
+    hotel_name: str,
+    unit_name: str,
+    confirmation_code: str,
+    guest_name: str,
+    guest_phone: str,
+    guests: int,
+    check_in: date,
+    check_out: date,
+    total_price: float,
+    currency_code: str,
+) -> None:
+    payload = _build_monosend_payload(
+        guest_email=guest_email,
+        hotel_name=hotel_name,
+        unit_name=unit_name,
+        confirmation_code=confirmation_code,
+        guest_name=guest_name,
+        guest_phone=guest_phone,
+        guests=guests,
+        check_in=check_in,
+        check_out=check_out,
+        total_price=total_price,
+        currency_code=currency_code,
+    )
+    body = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        MONOSEND_EMAILS_URL,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {MONOSEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with request.urlopen(req, timeout=MONOSEND_TIMEOUT_SECONDS) as resp:
+            status = getattr(resp, "status", resp.getcode())
+            response_body = resp.read().decode("utf-8", errors="replace")
+            if status < 200 or status >= 300:
+                raise RuntimeError(
+                    f"Monosend returned HTTP {status}: {response_body[:500]}"
+                )
+    except error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Monosend returned HTTP {exc.code}: {err_body[:500]}"
+        ) from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Monosend request failed: {exc}") from exc
 
 
 # ── Resources (UI templates) ───────────────────────────────────────────────
@@ -582,6 +685,33 @@ def book_confirm(
         "guest_phone": guest_phone,
         "image_url": unit["images"][0] if unit.get("images") else "",
     }
+
+    try:
+        _send_booking_confirmation_email(
+            guest_email=guest_email,
+            hotel_name=unit["mvp_accommodation"]["name"],
+            unit_name=unit["name"],
+            confirmation_code=confirmation_code,
+            guest_name=guest_name,
+            guest_phone=guest_phone,
+            guests=guests,
+            check_in=check_in_date,
+            check_out=check_out_date,
+            total_price=total_price,
+            currency_code=currency_code,
+        )
+        logger.info(
+            "Monosend booking confirmation email sent for %s to %s.",
+            confirmation_code,
+            guest_email,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Monosend booking confirmation email failed for %s to %s: %s",
+            confirmation_code,
+            guest_email,
+            exc,
+        )
 
     return {
         "content": [

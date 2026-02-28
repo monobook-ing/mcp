@@ -1226,6 +1226,17 @@
 
     function hydrate(raw) {
       if (hydrated) return true;
+
+      // Check for confirmation payload first — if user already confirmed,
+      // show the confirmed card on refresh instead of the booking form
+      const confirmPayload = normalizeConfirmationPayload(raw);
+      if (confirmPayload) {
+        hydrated = true;
+        clearHydrationTimers();
+        renderConfirmationCard(confirmPayload);
+        return true;
+      }
+
       const payload = normalizeToolPayload(raw);
       if (!payload) return false;
 
