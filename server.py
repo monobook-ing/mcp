@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from datetime import date, timedelta
 from functools import lru_cache
@@ -143,13 +144,58 @@ def search_rooms(
     max_price: Optional[float] = None,
     min_guests: Optional[int] = None,
     amenity: str = "",
+    query: str = "",
     check_in: str = "",
     check_out: str = "",
 ) -> dict:
     """Search available rooms/units by hotel name, city, country, type, price,
-    guest capacity, or amenities like 'Hot tub', 'Sauna', 'Pool'.
+    guest capacity, amenities like 'Hot tub', 'Sauna', 'Pool', or free-text query.
+    Query matches unit name/description/type, hotel name, city/state/country, and amenities.
     Returns interactive room cards with Reserve button.
     Use check_in/check_out in YYYY-MM-DD format if dates are known."""
+
+    normalized_query = " ".join(re.split(r"\s+", str(query or "").strip().lower()))
+    normalized_amenity = " ".join(re.split(r"\s+", str(amenity or "").strip().lower()))
+
+    def normalize_text(value: object) -> str:
+        if value is None:
+            return ""
+        return " ".join(re.split(r"\s+", str(value).strip().lower()))
+
+    def normalize_amenities(raw_amenities: object) -> list[str]:
+        if isinstance(raw_amenities, list):
+            return [str(item) for item in raw_amenities if item is not None]
+        if raw_amenities is None:
+            return []
+        return [str(raw_amenities)]
+
+    def unit_matches_text_filters(unit: dict) -> bool:
+        accommodation = unit.get("mvp_accommodation")
+        if not isinstance(accommodation, dict):
+            accommodation = {}
+
+        amenities_list = normalize_amenities(unit.get("amenities"))
+        amenities_blob = normalize_text(" ".join(amenities_list))
+        searchable_blob = normalize_text(
+            " ".join(
+                [
+                    str(unit.get("name") or ""),
+                    str(unit.get("description") or ""),
+                    str(unit.get("type") or ""),
+                    str(accommodation.get("name") or ""),
+                    str(accommodation.get("city") or ""),
+                    str(accommodation.get("state") or ""),
+                    str(accommodation.get("country") or ""),
+                    " ".join(amenities_list),
+                ]
+            )
+        )
+
+        if normalized_query and normalized_query not in searchable_blob:
+            return False
+        if normalized_amenity and normalized_amenity not in amenities_blob:
+            return False
+        return True
 
     def build_query(include_country: bool):
         q = supabase.table("mvp_unit").select(
@@ -168,18 +214,17 @@ def search_rooms(
             q = q.lte("price_per_night", max_price)
         if min_guests is not None:
             q = q.gte("max_guests", min_guests)
-        if amenity:
-            q = q.contains("amenities", [amenity])
 
         return q
 
     result = build_query(include_country=True).execute()
-    units = result.data
+    units = [u for u in (result.data or []) if unit_matches_text_filters(u)]
     relaxed_country_filter = False
 
     # If city+country yields nothing, retry city-only for region ambiguities
     if not units and city and country:
-        relaxed_units = build_query(include_country=False).execute().data
+        relaxed_units = build_query(include_country=False).execute().data or []
+        relaxed_units = [u for u in relaxed_units if unit_matches_text_filters(u)]
         if relaxed_units:
             units = relaxed_units
             relaxed_country_filter = True
@@ -221,49 +266,51 @@ def search_rooms(
             return "No special safety notes provided by host."
         return "\n".join(lines)
 
-    structured = {
-        "units": [
+    structured_units = []
+    for u in units:
+        accommodation = u.get("mvp_accommodation")
+        if not isinstance(accommodation, dict):
+            accommodation = {}
+
+        amenities_list = normalize_amenities(u.get("amenities"))
+        images = u.get("images")
+        if not isinstance(images, list):
+            images = [str(images)] if images else []
+
+        rating = parse_rating(accommodation.get("rating"))
+        structured_units.append(
             {
-                "id": u["id"],
-                "name": u["name"],
-                "type": u["type"],
-                "description": u["description"],
-                "price_per_night": float(u["price_per_night"]),
-                "currency_code": u["currency_code"],
-                "max_guests": u["max_guests"],
-                "bed_config": u["bed_config"],
-                "image_url": u["images"][0] if u.get("images") else "",
-                "images": u.get("images", []),
-                "amenities": u.get("amenities", []),
-                "hotel_name": u["mvp_accommodation"]["name"],
-                "hotel_rating": u["mvp_accommodation"]["rating"],
+                "id": u.get("id"),
+                "name": u.get("name"),
+                "type": u.get("type"),
+                "description": u.get("description"),
+                "price_per_night": float(u.get("price_per_night") or 0),
+                "currency_code": u.get("currency_code"),
+                "max_guests": u.get("max_guests"),
+                "bed_config": u.get("bed_config"),
+                "image_url": images[0] if images else "",
+                "images": images,
+                "amenities": amenities_list,
+                "hotel_name": accommodation.get("name"),
+                "hotel_rating": accommodation.get("rating"),
                 "location": {
-                    "city": u["mvp_accommodation"].get("city"),
-                    "state": u["mvp_accommodation"].get("state"),
-                    "country": u["mvp_accommodation"].get("country"),
-                    "lat": u["mvp_accommodation"].get("lat"),
-                    "lng": u["mvp_accommodation"].get("lng"),
+                    "city": accommodation.get("city"),
+                    "state": accommodation.get("state"),
+                    "country": accommodation.get("country"),
+                    "lat": accommodation.get("lat"),
+                    "lng": accommodation.get("lng"),
                 },
                 "review_summary": {
-                    "rating": parse_rating(u["mvp_accommodation"].get("rating")),
+                    "rating": rating,
                     "review_count": 0,
-                    "text": (
-                        f"{parse_rating(u['mvp_accommodation'].get('rating')):.2f}"
-                        if parse_rating(u["mvp_accommodation"].get("rating")) is not None
-                        else "No reviews yet"
-                    ),
+                    "text": f"{rating:.2f}" if rating is not None else "No reviews yet",
                 },
                 "host": {
-                    "name": u["mvp_accommodation"].get("name") or "Host",
+                    "name": accommodation.get("name") or "Host",
                     "years_hosting": 1,
                     "response_time": "Responds within a few days or more",
-                    "is_superhost": bool(
-                        (parse_rating(u["mvp_accommodation"].get("rating")) or 0) >= 4.8
-                    ),
-                    "avatar_url": (
-                        u["mvp_accommodation"].get("image_url")
-                        or (u["images"][0] if u.get("images") else "")
-                    ),
+                    "is_superhost": bool((rating or 0) >= 4.8),
+                    "avatar_url": accommodation.get("image_url") or (images[0] if images else ""),
                 },
                 "things_to_know": {
                     "cancellation": (
@@ -276,27 +323,29 @@ def search_rooms(
                         "Checkout before 11:00 AM\n"
                         f"Maximum guests: {u.get('max_guests') or 1}"
                     ),
-                    "safety": derive_safety(u.get("amenities", [])),
+                    "safety": derive_safety(amenities_list),
                 },
                 "extended_reviews": [],
                 "map": {
-                    "lat": u["mvp_accommodation"].get("lat"),
-                    "lng": u["mvp_accommodation"].get("lng"),
+                    "lat": accommodation.get("lat"),
+                    "lng": accommodation.get("lng"),
                     "label": ", ".join(
                         [
                             p
                             for p in [
-                                u["mvp_accommodation"].get("city"),
-                                u["mvp_accommodation"].get("state"),
-                                u["mvp_accommodation"].get("country"),
+                                accommodation.get("city"),
+                                accommodation.get("state"),
+                                accommodation.get("country"),
                             ]
                             if p
                         ]
                     ),
                 },
             }
-            for u in units
-        ],
+        )
+
+    structured = {
+        "units": structured_units,
         "count": len(units),
         "check_in": check_in,
         "check_out": check_out,
