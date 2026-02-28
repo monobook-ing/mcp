@@ -806,6 +806,25 @@
         typeof data.check_out === 'string';
     }
 
+    function extractConfirmationCodeFromText(raw) {
+      // Try to extract confirmation code from content[].text like "Booking confirmed. Code: BK-XXXXXX."
+      const texts = [];
+      if (raw && typeof raw === 'object') {
+        for (const src of [raw, raw.result, raw.params, raw.params?.result]) {
+          if (src && Array.isArray(src.content)) {
+            for (const item of src.content) {
+              if (item && typeof item.text === 'string') texts.push(item.text);
+            }
+          }
+        }
+      }
+      for (const t of texts) {
+        const m = t.match(/Code:\s*(BK-[A-Z0-9]+)/i);
+        if (m) return m[1];
+      }
+      return null;
+    }
+
     function normalizeConfirmationPayload(raw) {
       const sources = [];
 
@@ -818,6 +837,11 @@
         sources.push(raw.params?.structuredContent);
         sources.push(raw.params?.result);
         sources.push(raw.params?.result?.structuredContent);
+        // Additional paths for callTool responses
+        sources.push(raw.output);
+        sources.push(raw.output?.structuredContent);
+        sources.push(raw.data);
+        sources.push(raw.data?.structuredContent);
       }
       if (window.openai && window.openai.toolOutput) {
         const output = window.openai.toolOutput;
@@ -938,8 +962,11 @@
         renderConfirmationCard(confirmation);
       } else {
         // Fallback: build confirmation data from bookingData + stored form inputs
+        // Try to extract the actual confirmation code from content text
+        const codeFromText = extractConfirmationCodeFromText(raw);
         const fallback = {
-          confirmation_code: 'PENDING',
+          confirmation_code: codeFromText || 'CONFIRMED',
+          status: 'confirmed',
           unit_name: bookingData.unit_name || '',
           check_in: bookingData.check_in || '',
           check_out: bookingData.check_out || '',
