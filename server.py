@@ -356,7 +356,7 @@ def search_rooms(
         "content": [
             {
                 "type": "text",
-                "text": f"Found {len(units)} room(s). To reserve, ask the user to click Reserve in the room card. Do not call booking tools directly.",
+                "text": f"Found {len(units)} room(s). If the user asks to reserve, call the book tool with the appropriate unit and dates.",
             }
         ],
         "structuredContent": structured,
@@ -372,7 +372,7 @@ def search_rooms(
 
 @mcp.tool(
     annotations={
-        "title": "Open booking form (widget click only)",
+        "title": "Open booking form",
         "readOnlyHint": True,
         "openWorldHint": False,
     },
@@ -390,8 +390,9 @@ def book(
     hotel_name: str = "",
     guests: int = 2,
 ) -> dict:
-    """Widget-only tool. Do not call directly from assistant chat.
-    Use only after user clicks Reserve in the room card."""
+    """Open a booking form for the given unit/room.
+    Can be called when the user requests a reservation from chat,
+    or when they click Reserve in the room card."""
 
     unit = None
     looks_like_uuid = bool(
@@ -495,8 +496,8 @@ def book_confirm(
     currency_code: str = "USD",
     unit_name: str = "",
 ) -> dict:
-    """Widget-only tool. Do not call directly from assistant chat.
-    Use only after user submits the booking form."""
+    """Confirm a booking with guest details and finalize the reservation.
+    Can be called from the widget form submission or directly from chat."""
 
     # Upsert guest. Supabase may return None or a result object with dict/list data.
     existing = (
