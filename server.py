@@ -207,7 +207,7 @@ def search_hotels(
     """Search accommodations by hotel name, city, coordinates, or country.
     Returns matching hotels with basic info."""
 
-    query = supabase.table("mvp_accommodation").select("*")
+    query = supabase.table("properties").select("*")
 
     if hotel_name:
         query = query.ilike("name", f"%{hotel_name}%")
@@ -273,7 +273,7 @@ def search_rooms(
         return [str(raw_amenities)]
 
     def unit_matches_text_filters(unit: dict) -> bool:
-        accommodation = unit.get("mvp_accommodation")
+        accommodation = unit.get("properties")
         if not isinstance(accommodation, dict):
             accommodation = {}
 
@@ -301,16 +301,16 @@ def search_rooms(
         return True
 
     def build_query(include_country: bool):
-        q = supabase.table("mvp_unit").select(
-            "*, mvp_accommodation!inner(name, city, state, country, rating, image_url, lat, lng)"
+        q = supabase.table("rooms").select(
+            "*, properties!inner(city, state, country, rating, image_url, lat, lng)"
         )
 
         if hotel_name:
-            q = q.ilike("mvp_accommodation.name", f"%{hotel_name}%")
+            q = q.ilike("properties.city", f"%{hotel_name}%")
         if city:
-            q = q.ilike("mvp_accommodation.city", f"%{city}%")
+            q = q.ilike("properties.city", f"%{city}%")
         if include_country and country:
-            q = q.ilike("mvp_accommodation.country", f"%{country}%")
+            q = q.ilike("properties.country", f"%{country}%")
         if unit_type:
             q = q.ilike("type", f"%{unit_type}%")
         if max_price is not None:
@@ -371,7 +371,7 @@ def search_rooms(
 
     structured_units = []
     for u in units:
-        accommodation = u.get("mvp_accommodation")
+        accommodation = u.get("properties")
         if not isinstance(accommodation, dict):
             accommodation = {}
 
@@ -507,8 +507,8 @@ def book(
     # Backward-compatible lookup path for older clients that still send unit_id.
     if looks_like_uuid:
         unit_result = (
-            supabase.table("mvp_unit")
-            .select("*, mvp_accommodation!inner(*)")
+            supabase.table("rooms")
+            .select("*, properties!inner(*)")
             .eq("id", unit_id)
             .single()
             .execute()
@@ -520,12 +520,12 @@ def book(
             raise ValueError("Either unit_name or unit_id is required.")
 
         unit_query = (
-            supabase.table("mvp_unit")
-            .select("*, mvp_accommodation!inner(*)")
+            supabase.table("rooms")
+            .select("*, properties!inner(*)")
             .eq("name", lookup_name)
         )
         if hotel_name:
-            unit_query = unit_query.eq("mvp_accommodation.name", hotel_name)
+            unit_query = unit_query.eq("properties.city", hotel_name)
 
         unit_rows = unit_query.execute().data or []
         if not unit_rows:
@@ -543,7 +543,7 @@ def book(
     structured = {
         "unit_id": unit["id"],
         "unit_name": unit["name"],
-        "hotel_name": unit["mvp_accommodation"]["name"],
+        "hotel_name": unit["properties"].get("city", ""),
         "check_in": check_in_date.isoformat(),
         "check_out": check_out_date.isoformat(),
         "nights": nights,
@@ -552,7 +552,7 @@ def book(
         "currency_code": unit["currency_code"],
         "total_price": total,
         "image_url": unit["images"][0] if unit.get("images") else "",
-        "rating": unit["mvp_accommodation"]["rating"],
+        "rating": unit["properties"]["rating"],
     }
 
     return {
@@ -602,38 +602,10 @@ def book_confirm(
     """Confirm a booking with guest details and finalize the reservation.
     Can be called from the widget form submission or directly from chat."""
 
-    # Upsert guest. Supabase may return None or a result object with dict/list data.
-    existing = (
-        supabase.table("mvp_guest")
-        .select("id")
-        .eq("email", guest_email)
-        .maybe_single()
-        .execute()
-    )
-    existing_data = existing.data if existing is not None else None
-    if isinstance(existing_data, list):
-        existing_data = existing_data[0] if existing_data else None
-
-    if existing_data:
-        guest_id = existing_data["id"]
-        supabase.table("mvp_guest").update(
-            {"name": guest_name, "phone": guest_phone}
-        ).eq("id", guest_id).execute()
-    else:
-        guest_insert = (
-            supabase.table("mvp_guest")
-            .insert({"name": guest_name, "email": guest_email, "phone": guest_phone})
-            .execute()
-        )
-        inserted_rows = guest_insert.data if guest_insert is not None else None
-        if not inserted_rows:
-            raise RuntimeError("Failed to create guest record for booking confirmation.")
-        guest_id = inserted_rows[0]["id"]
-
-    # Get unit info
+    # Get unit info (moved up so property_id is available for guest upsert)
     unit = (
-        supabase.table("mvp_unit")
-        .select("*, mvp_accommodation!inner(*)")
+        supabase.table("rooms")
+        .select("*, properties!inner(*)")
         .eq("id", unit_id)
         .single()
         .execute()
@@ -644,6 +616,37 @@ def book_confirm(
             f"Unit name mismatch for unit_id '{unit_id}': expected '{unit['name']}', got '{unit_name.strip()}'."
         )
 
+    property_id = unit["property_id"]
+
+    # Upsert guest. Supabase may return None or a result object with dict/list data.
+    existing = (
+        supabase.table("guests")
+        .select("id")
+        .eq("email", guest_email)
+        .eq("property_id", property_id)
+        .maybe_single()
+        .execute()
+    )
+    existing_data = existing.data if existing is not None else None
+    if isinstance(existing_data, list):
+        existing_data = existing_data[0] if existing_data else None
+
+    if existing_data:
+        guest_id = existing_data["id"]
+        supabase.table("guests").update(
+            {"name": guest_name, "phone": guest_phone, "updated_at": "now()"}
+        ).eq("id", guest_id).execute()
+    else:
+        guest_insert = (
+            supabase.table("guests")
+            .insert({"property_id": property_id, "name": guest_name, "email": guest_email, "phone": guest_phone})
+            .execute()
+        )
+        inserted_rows = guest_insert.data if guest_insert is not None else None
+        if not inserted_rows:
+            raise RuntimeError("Failed to create guest record for booking confirmation.")
+        guest_id = inserted_rows[0]["id"]
+
     # Generate confirmation code
     confirmation_code = f"BK-{uuid.uuid4().hex[:6].upper()}"
 
@@ -652,18 +655,19 @@ def book_confirm(
     check_out_date = check_out
     nights = (check_out_date - check_in_date).days
 
-    supabase.table("mvp_reservation").insert(
+    supabase.table("bookings").insert(
         {
-            "confirmation_code": confirmation_code,
+            "property_id": property_id,
+            "room_id": unit_id,
             "guest_id": guest_id,
-            "unit_id": unit_id,
-            "accommodation_id": unit["property_id"],
             "check_in": check_in_date.isoformat(),
             "check_out": check_out_date.isoformat(),
             "guests_count": guests,
             "total_price": total_price,
             "currency_code": currency_code,
             "status": "confirmed",
+            "ai_handled": True,
+            "source": "chatgpt",
         }
     ).execute()
 
@@ -671,7 +675,7 @@ def book_confirm(
         "confirmation_code": confirmation_code,
         "status": "confirmed",
         "unit_name": unit["name"],
-        "hotel_name": unit["mvp_accommodation"]["name"],
+        "hotel_name": unit["properties"].get("city", ""),
         "check_in": check_in_date.isoformat(),
         "check_out": check_out_date.isoformat(),
         "check_in_time": "15:00",
@@ -689,7 +693,7 @@ def book_confirm(
     try:
         _send_booking_confirmation_email(
             guest_email=guest_email,
-            hotel_name=unit["mvp_accommodation"]["name"],
+            hotel_name=unit["properties"].get("city", ""),
             unit_name=unit["name"],
             confirmation_code=confirmation_code,
             guest_name=guest_name,

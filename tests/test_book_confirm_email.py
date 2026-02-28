@@ -42,12 +42,12 @@ class FakeTableQuery:
 
     def insert(self, payload):
         self.payload = payload
-        if self.table == "mvp_reservation":
+        if self.table == "bookings":
             self.state["reservation_insert_payload"] = payload
         return self
 
     def execute(self):
-        if self.table == "mvp_guest":
+        if self.table == "guests":
             if self.payload is None:
                 data = {"id": self.state["existing_guest_id"]} if self.state["existing_guest_id"] else None
                 return FakeResponse(data)
@@ -58,10 +58,10 @@ class FakeTableQuery:
             self.state["guest_update_id"] = self.filters.get("id")
             return FakeResponse([])
 
-        if self.table == "mvp_unit":
+        if self.table == "rooms":
             return FakeResponse(self.state["unit"])
 
-        if self.table == "mvp_reservation":
+        if self.table == "bookings":
             return FakeResponse([{"ok": True}])
 
         raise AssertionError(f"Unexpected table {self.table}")
@@ -77,7 +77,7 @@ class FakeSupabase:
                 "name": "Sova House",
                 "property_id": "acc-1",
                 "images": ["https://example.com/cover.jpg"],
-                "mvp_accommodation": {"name": "Vysota 890"},
+                "properties": {"name": "Vysota 890"},
             },
         }
 

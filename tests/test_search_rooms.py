@@ -68,7 +68,7 @@ def make_unit(
         "bed_config": "2 beds",
         "images": ["https://example.com/1.jpg"],
         "amenities": amenities if amenities is not None else ["Pool", "Hot tub", "Sauna"],
-        "mvp_accommodation": {
+        "properties": {
             "name": "Vysota 890",
             "city": city,
             "state": state,
