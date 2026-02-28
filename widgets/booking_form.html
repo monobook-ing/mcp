@@ -1,38 +1,42 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Booking Form</title>
   <style>
-    :root{
+    :root {
       --bg: #f3f4f6;
       --card: #ffffff;
       --text: #111827;
       --muted: #6b7280;
-      --border: rgba(17,24,39,.10);
+      --border: rgba(17, 24, 39, .10);
       /*--shadow: 0 24px 60px rgba(0,0,0,.14);*/
-      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+      --shadow-soft: 0 10px 30px rgba(0, 0, 0, .10);
       --radius: 28px;
       --cta: #111827;
       --ctaText: #ffffff;
-      --pill: rgba(17,24,39,.06);
-      --divider: rgba(17,24,39,.08);
+      --pill: rgba(17, 24, 39, .06);
+      --divider: rgba(17, 24, 39, .08);
       --link: #111827;
-      --focus: rgba(17,24,39,.22);
-      --field: rgba(17,24,39,.04);
+      --focus: rgba(17, 24, 39, .22);
+      --field: rgba(17, 24, 39, .04);
     }
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       background: transparent;
       color: var(--text);
       padding: 8px;
     }
 
-    .wrap{
+    .wrap {
       max-width: 980px;
       margin: 0 auto;
       display: grid;
@@ -40,7 +44,7 @@
       gap: 22px;
     }
 
-    .booking-card{
+    .booking-card {
       width: min(720px, 100%);
       background: var(--card);
       border: 1px solid var(--border);
@@ -49,185 +53,210 @@
       box-shadow: var(--shadow);
     }
 
-    .media{
+    .media {
       position: relative;
       height: 210px;
       background:
-        linear-gradient(115deg, rgba(255,255,255,.08), rgba(255,255,255,0)),
-        radial-gradient(900px 400px at 80% 20%, rgba(255,255,255,.25), rgba(255,255,255,0) 60%),
+        linear-gradient(115deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0)),
+        radial-gradient(900px 400px at 80% 20%, rgba(255, 255, 255, .25), rgba(255, 255, 255, 0) 60%),
         linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
     }
 
-    .media::after{
-      content:"";
-      position:absolute;
-      inset:0;
+    .media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
-      pointer-events:none;
+      pointer-events: none;
     }
 
-    .media-top{
-      position:absolute;
-      top:16px;
-      left:16px;
-      right:16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      z-index:2;
+    .media-top {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 2;
     }
 
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 12px;
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
       border-radius: 999px;
-      background: rgba(255,255,255,.22);
-      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255, 255, 255, .22);
+      border: 1px solid rgba(255, 255, 255, .22);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      color:#fff;
+      color: #fff;
       font-weight: 650;
       letter-spacing: .2px;
       box-shadow: var(--shadow-soft);
       font-size: 13px;
     }
 
-    .badge .dot{
-      width:9px;height:9px;border-radius:50%;
-      background: rgba(255,255,255,.85);
-      box-shadow: 0 0 0 3px rgba(255,255,255,.18);
+    .badge .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .85);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, .18);
     }
 
-    .media-bottom{
-      position:absolute;
-      left:18px;
-      right:18px;
-      bottom:16px;
-      z-index:2;
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:16px;
+    .media-bottom {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      z-index: 2;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
     }
 
-    .price-pill{
-      display:flex;
-      align-items:baseline;
-      gap:6px;
-      padding:14px 16px;
+    .price-pill {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 14px 16px;
       border-radius: 20px;
-      background: rgba(17,24,39,.22);
-      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(17, 24, 39, .22);
+      border: 1px solid rgba(255, 255, 255, .18);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      color:#fff;
+      color: #fff;
       box-shadow: var(--shadow-soft);
       min-width: 128px;
-      justify-content:center;
+      justify-content: center;
     }
-    .price-pill .amount{font-size: 34px; font-weight: 900; line-height: 1;}
-    .price-pill .per{font-size: 13px; opacity:.9; font-weight: 650;}
 
-    .content{
+    .price-pill .amount {
+      font-size: 34px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .price-pill .per {
+      font-size: 13px;
+      opacity: .9;
+      font-weight: 650;
+    }
+
+    .content {
       padding: 22px 22px 18px;
     }
 
-    .title{
+    .title {
       font-size: 24px;
       line-height: 1.2;
       letter-spacing: -0.4px;
-      margin:0 0 6px 0;
+      margin: 0 0 6px 0;
       font-weight: 900;
     }
 
-    .sub{
-      margin:0;
+    .sub {
+      margin: 0;
       color: var(--muted);
       font-weight: 650;
       font-size: 14px;
     }
 
-    .meta{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
+    .meta {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
       margin-top: 10px;
       color: var(--muted);
       font-weight: 700;
       font-size: 14px;
     }
 
-    .star{
-      display:inline-flex;
-      gap:6px;
-      align-items:center;
+    .star {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
       color: var(--text);
       font-weight: 900;
     }
-    .star svg{width:16px;height:16px}
 
-    .section{
+    .star svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .section {
       margin-top: 16px;
       border-top: 1px solid var(--divider);
       padding-top: 16px;
     }
-    .section h3{
-      margin:0 0 6px 0;
+
+    .section h3 {
+      margin: 0 0 6px 0;
       font-size: 16px;
       letter-spacing: -0.2px;
     }
-    .section p{
-      margin:0;
+
+    .section p {
+      margin: 0;
       color: var(--muted);
       font-weight: 650;
       line-height: 1.45;
     }
-    .section a{
+
+    .section a {
       color: var(--link);
       font-weight: 900;
       text-decoration: underline;
       text-underline-offset: 3px;
     }
 
-    .rows{
+    .rows {
       margin-top: 14px;
       border-top: 1px solid var(--divider);
     }
 
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 16px;
       padding: 16px 0;
       border-bottom: 1px solid var(--divider);
     }
-    .row:last-child{border-bottom:none;}
-    .row .left{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .row .left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
       flex: 1;
       min-width: 0;
     }
-    .row .label{
+
+    .row .label {
       font-weight: 950;
       font-size: 16px;
       letter-spacing: -0.2px;
     }
-    .row .value{
+
+    .row .value {
       color: var(--muted);
       font-weight: 650;
       font-size: 14px;
     }
 
-    .field{
+    .field {
       width: 100%;
       height: 44px;
       border-radius: 14px;
@@ -239,13 +268,19 @@
       color: var(--text);
       margin-top: 8px;
     }
-    .field::placeholder{ color: rgba(107,114,128,.85); font-weight: 650; }
-    .field:focus{
-      outline:none;
+
+    .field::placeholder {
+      color: rgba(107, 114, 128, .85);
+      font-weight: 650;
+    }
+
+    .field:focus {
+      outline: none;
       box-shadow: 0 0 0 4px var(--focus);
       background: #fff;
     }
-    .hint{
+
+    .hint {
       margin-top: 8px;
       color: var(--muted);
       font-weight: 650;
@@ -253,40 +288,52 @@
       line-height: 1.45;
     }
 
-    .price{
+    .price {
       margin-top: 10px;
       border-top: 1px solid var(--divider);
       padding-top: 14px;
     }
-    .price-line{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
+
+    .price-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
       padding: 10px 0;
       color: var(--muted);
       font-weight: 650;
     }
-    .total{
+
+    .total {
       margin-top: 6px;
       padding-top: 14px;
       border-top: 1px solid var(--divider);
-      display:flex;
-      justify-content:space-between;
-      align-items:baseline;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
       gap: 12px;
     }
-    .total .tlabel{ font-weight: 950; letter-spacing: -0.2px; font-size: 18px; }
-    .total .tvalue{ font-weight: 950; font-size: 20px; }
 
-    .actions{
+    .total .tlabel {
+      font-weight: 950;
+      letter-spacing: -0.2px;
+      font-size: 18px;
+    }
+
+    .total .tvalue {
+      font-weight: 950;
+      font-size: 20px;
+    }
+
+    .actions {
       padding: 18px 22px 22px;
       border-top: 1px solid var(--divider);
-      display:flex;
+      display: flex;
       gap: 12px;
-      align-items:center;
+      align-items: center;
     }
-    .confirm{
-      flex:1;
+
+    .confirm {
+      flex: 1;
       height: 56px;
       border-radius: 999px;
       border: none;
@@ -295,43 +342,56 @@
       font-weight: 950;
       font-size: 16px;
       letter-spacing: .2px;
-      cursor:pointer;
-      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+      cursor: pointer;
+      box-shadow: 0 16px 30px rgba(17, 24, 39, .18);
     }
-    .confirm:hover{transform: translateY(-1px);}
-    .confirm:active{transform: translateY(0px);}
-    .confirm:focus{outline:none; box-shadow: 0 0 0 4px var(--focus), 0 16px 30px rgba(17,24,39,.18);}
-    .confirm:disabled{
+
+    .confirm:hover {
+      transform: translateY(-1px);
+    }
+
+    .confirm:active {
+      transform: translateY(0px);
+    }
+
+    .confirm:focus {
+      outline: none;
+      box-shadow: 0 0 0 4px var(--focus), 0 16px 30px rgba(17, 24, 39, .18);
+    }
+
+    .confirm:disabled {
       cursor: not-allowed;
       pointer-events: none;
       transform: none;
       box-shadow: none;
       opacity: .72;
     }
+
     .confirm:disabled:hover,
-    .confirm:disabled:active{
+    .confirm:disabled:active {
       transform: none;
     }
-    .confirm.is-confirmed{
+
+    .confirm.is-confirmed {
       background: #16a34a;
       color: #ffffff;
-      box-shadow: 0 16px 30px rgba(22,163,74,.25);
+      box-shadow: 0 16px 30px rgba(22, 163, 74, .25);
       opacity: 1;
     }
 
-    .secondary{
+    .secondary {
       height: 56px;
       padding: 0 18px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(17,24,39,.04);
+      background: rgba(17, 24, 39, .04);
       color: var(--text);
       font-weight: 950;
-      cursor:pointer;
-      white-space:nowrap;
+      cursor: pointer;
+      white-space: nowrap;
     }
 
-    dialog{
+    dialog {
       border: 1px solid var(--border);
       border-radius: 22px;
       padding: 18px;
@@ -339,53 +399,275 @@
       width: calc(100% - 28px);
       box-shadow: var(--shadow);
     }
-    dialog::backdrop{ background: rgba(17,24,39,.35); backdrop-filter: blur(2px); }
-    .modal-title{margin:0 0 10px 0; font-size:18px; font-weight: 950;}
-    .modal-text{margin:0; color: var(--muted); font-weight: 650; line-height: 1.55;}
-    .modal-actions{margin-top:14px; display:flex; justify-content:flex-end; gap:10px;}
-    .close{
+
+    dialog::backdrop {
+      background: rgba(17, 24, 39, .35);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-title {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .modal-text {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 650;
+      line-height: 1.55;
+    }
+
+    .modal-actions {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .close {
       height: 44px;
       padding: 0 16px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(17,24,39,.04);
+      background: rgba(17, 24, 39, .04);
       font-weight: 950;
-      cursor:pointer;
+      cursor: pointer;
     }
 
-    .error{
-      display:none;
+    .error {
+      display: none;
       margin-top: 10px;
       padding: 10px 12px;
       border-radius: 14px;
-      background: rgba(239,68,68,.10);
-      border: 1px solid rgba(239,68,68,.22);
+      background: rgba(239, 68, 68, .10);
+      border: 1px solid rgba(239, 68, 68, .22);
       color: #991b1b;
       font-weight: 750;
       font-size: 13px;
     }
-    .error.show{display:block;}
 
-    @media (max-width: 520px){
-      .media{height: 190px;}
-      .title{font-size: 22px;}
-      .media-bottom{flex-direction:column; align-items:stretch;}
-      .price-pill{width: 100%;}
-      .actions{flex-direction:column;}
-      .secondary{width:100%;}
-      .row{flex-direction:column; align-items:stretch;}
+    .error.show {
+      display: block;
     }
 
-    #loading{
+    /* ── Confirmation card (inline after success) ── */
+    .confirmed-card {
+      width: min(720px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .confirmed-hero {
+      position: relative;
+      height: 190px;
+      background:
+        radial-gradient(900px 420px at 80% 20%, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 60%),
+        linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
+    }
+
+    .confirmed-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    .confirmed-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, .05), rgba(0, 0, 0, .55));
+      pointer-events: none;
+    }
+
+    .confirmed-hero-inner {
+      position: absolute;
+      inset: 16px 18px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 2;
+      color: #fff;
+    }
+
+    .confirmed-hero-title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .confirmed-hero-title h1 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: -0.4px;
+      font-weight: 950;
+      line-height: 1.15;
+      text-shadow: 0 14px 30px rgba(0, 0, 0, .35);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 560px;
+    }
+
+    .confirmed-hero-title p {
+      margin: 0;
+      color: rgba(255, 255, 255, .85);
+      font-weight: 650;
+      text-shadow: 0 14px 30px rgba(0, 0, 0, .35);
+    }
+
+    .confirmed-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .22);
+      border: 1px solid rgba(255, 255, 255, .22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-soft);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .confirmed-status-pill .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(34, 197, 94, .95);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, .18);
+    }
+
+    .confirmed-panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(17, 24, 39, .02);
+    }
+
+    .confirmed-panel-head h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+      font-weight: 950;
+    }
+
+    .confirmed-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: var(--pill);
+      border: 1px solid var(--border);
+      font-weight: 850;
+      color: var(--text);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .confirmed-panel-body {
+      padding: 0 16px 14px;
+    }
+
+    .confirmed-kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px 12px;
+      align-items: baseline;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+
+    .confirmed-kv:last-child {
+      border-bottom: none;
+    }
+
+    .confirmed-k {
+      color: var(--muted);
+      font-weight: 750;
+    }
+
+    .confirmed-v {
+      font-weight: 950;
+      letter-spacing: -0.2px;
+    }
+
+    .confirmed-v.muted {
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .confirmed-footer {
+      padding: 0 22px 20px;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 860px) {
+      .confirmed-hero-title h1 {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .media {
+        height: 190px;
+      }
+
+      .title {
+        font-size: 22px;
+      }
+
+      .media-bottom {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .price-pill {
+        width: 100%;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .secondary {
+        width: 100%;
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    #loading {
       text-align: center;
       padding: 60px 20px;
       color: #6b7280;
       font-size: 16px;
       font-weight: 600;
     }
-    .retry-btn{
+
+    .retry-btn {
       margin-top: 14px;
-      border: 1px solid rgba(17,24,39,.14);
+      border: 1px solid rgba(17, 24, 39, .14);
       background: #fff;
       color: #111827;
       border-radius: 999px;
@@ -396,14 +678,18 @@
     }
   </style>
 </head>
+
 <body>
 
-  <div id="root"><div id="loading">Loading booking form...</div></div>
+  <div id="root">
+    <div id="loading">Loading booking form...</div>
+  </div>
 
   <dialog id="policyDialog">
     <h3 class="modal-title">Cancellation policy</h3>
     <p class="modal-text">
-      Free cancellation until <strong id="cancelDate">–</strong> (local time). After that, cancellation may be non-refundable
+      Free cancellation until <strong id="cancelDate">–</strong> (local time). After that, cancellation may be
+      non-refundable
       depending on the host's rules and the timing of the cancellation.
     </p>
     <div class="modal-actions">
@@ -547,12 +833,128 @@
       return null;
     }
 
+    function renderConfirmationCard(data) {
+      const dateChip = `${fmtDate(data.check_in)} – ${fmtDateFull(data.check_out)}`;
+      const ciTime = data.check_in_time || '15:00';
+      const coTime = data.check_out_time || '11:00';
+      const cancelDate = getCancelDate(data.check_in);
+      const total = formatMoney(data.total_price, data.currency_code);
+      const imgUrl = data.image_url || '';
+      const unitName = data.unit_name || bookingData.unit_name || 'Your Stay';
+      const heroId = 'confirmedHero_' + Date.now();
+
+      document.getElementById('root').innerHTML = `
+        <main class="wrap">
+          <section class="confirmed-card">
+            <div class="confirmed-hero" id="${heroId}" role="img" aria-label="Booking image">
+              ${imgUrl ? `<style>#${heroId}::before{background-image:url('${imgUrl}') !important;} #${heroId}{background:none;}</style>` : ''}
+              <div class="confirmed-hero-inner">
+                <div class="confirmed-hero-title">
+                  <h1>${unitName}</h1>
+                  <p>Confirmation &bull; #${data.confirmation_code}</p>
+                </div>
+                <div class="confirmed-status-pill">
+                  <span class="dot"></span> Confirmed
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div>
+                <section>
+                  <header class="confirmed-panel-head">
+                    <h2>Booking details</h2>
+                    <span class="confirmed-chip">${dateChip}</span>
+                  </header>
+                  <div class="confirmed-panel-body">
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Full name</div>
+                      <div class="confirmed-v">${data.guest_name || ''}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Emails</div>
+                      <div class="confirmed-v">${data.guest_email || ''}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">PhoneNumber</div>
+                      <div class="confirmed-v">${data.guest_phone || ''}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Guests</div>
+                      <div class="confirmed-v">${data.guests || 1} guest(s)</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Check-in</div>
+                      <div class="confirmed-v">${fmtDate(data.check_in)}, ${ciTime}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Check-out</div>
+                      <div class="confirmed-v">${fmtDate(data.check_out)}, ${coTime}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Address</div>
+                      <div class="confirmed-v muted">Shared after confirmation</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Cancellation</div>
+                      <div class="confirmed-v">Free cancellation until ${cancelDate}</div>
+                    </div>
+                    <div class="confirmed-kv">
+                      <div class="confirmed-k">Total</div>
+                      <div class="confirmed-v">${total}</div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div class="confirmed-footer">
+              Free cancellation until <strong>${cancelDate}</strong> (local time). After that, cancellation may be non-refundable depending on the host's rules and timing.
+            </div>
+          </section>
+        </main>`;
+
+      setTimeout(sendHeight, 50);
+    }
+
+    function fmtDate(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function fmtDateFull(isoStr) {
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
     function handleConfirmSuccess(raw) {
       if (submitState !== 'submitting') return false;
-      const payload = normalizeConfirmationPayload(raw);
-      if (!payload) return false;
       hideFormError();
       setConfirmState('confirmed');
+
+      // Try to extract structured confirmation data and render the card
+      const confirmation = normalizeConfirmationPayload(raw);
+      if (confirmation) {
+        renderConfirmationCard(confirmation);
+      } else {
+        // Fallback: build confirmation data from bookingData + stored form inputs
+        const fallback = {
+          confirmation_code: 'PENDING',
+          unit_name: bookingData.unit_name || '',
+          check_in: bookingData.check_in || '',
+          check_out: bookingData.check_out || '',
+          check_in_time: '15:00',
+          check_out_time: '11:00',
+          guests: bookingData.guests || 1,
+          guest_name: bookingData._guest_name || '',
+          guest_email: bookingData._guest_email || '',
+          guest_phone: bookingData._guest_phone || '',
+          total_price: bookingData.total_price || 0,
+          currency_code: bookingData.currency_code || 'USD',
+          image_url: bookingData.image_url || '',
+        };
+        renderConfirmationCard(fallback);
+      }
       return true;
     }
 
@@ -706,6 +1108,11 @@
         setConfirmState('submitting');
         startPendingConfirmTimeout();
 
+        // Store guest data for fallback confirmation card
+        bookingData._guest_name = name;
+        bookingData._guest_email = email;
+        bookingData._guest_phone = phone;
+
         const params = {
           unit_id: bookingData.unit_id,
           unit_name: bookingData.unit_name || '',
@@ -813,7 +1220,7 @@
       if (window.openai && typeof window.openai.getToolResult === 'function') {
         Promise.resolve(window.openai.getToolResult())
           .then(hydrate)
-          .catch(() => {});
+          .catch(() => { });
       }
       return hydrated;
     }
@@ -850,7 +1257,25 @@
       hydrate(msg);
     });
 
+    /* ── Auto-resize iframe via postMessage ── */
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage(
+        { type: 'widget:resize', height: height },
+        '*'
+      );
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      sendHeight();
+    });
+    resizeObserver.observe(document.body);
+
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
+
     startHydrationChecks();
   </script>
 </body>
+
 </html>
