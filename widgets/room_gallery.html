@@ -176,15 +176,14 @@
 
         .lightbox {
             display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            background: rgba(0, 0, 0, .92);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            position: relative;
+            width: 100%;
+            background: #0b1220;
+            border-radius: 22px;
             align-items: center;
             justify-content: center;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .lightbox.open {
@@ -227,22 +226,21 @@
         }
 
         .lightbox-img-wrap {
-            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding: 60px 20px 20px;
-            overflow: hidden;
+            padding: 60px 40px 20px;
         }
 
         .lightbox-img-wrap img {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: auto;
             object-fit: contain;
             border-radius: 12px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, .4);
             user-select: none;
+            display: block;
         }
 
         .lightbox-nav {
@@ -282,12 +280,8 @@
 
         .all-photos {
             display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 900;
+            width: 100%;
             background: #fff;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
         }
 
         .all-photos.open {
@@ -295,16 +289,10 @@
         }
 
         .all-photos-header {
-            position: sticky;
-            top: 0;
-            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 20px;
-            background: rgba(255, 255, 255, .92);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            padding: 16px 0px;
             border-bottom: 1px solid var(--divider);
         }
 
@@ -316,25 +304,33 @@
         }
 
         .all-photos-close {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 999px;
             border: 1px solid var(--border);
-            background: rgba(17, 24, 39, .04);
-            font-size: 18px;
-            font-weight: 900;
+            background: rgba(255, 255, 255, .9);
+            color: #111827;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all .15s ease;
+            flex-shrink: 0;
         }
 
         .all-photos-close:hover {
-            background: rgba(17, 24, 39, .08);
+            background: #fff;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+        }
+
+        .all-photos-close svg {
+            width: 14px;
+            height: 14px;
         }
 
         .all-photos-grid {
-            padding: 16px 20px 40px;
+            padding: 16px 0px 40px;
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 10px;
@@ -367,6 +363,11 @@
 
             .all-photos-grid {
                 grid-template-columns: 1fr;
+                padding: 16px 20px 40px;
+            }
+
+            .all-photos-header {
+                padding: 16px 20px;
             }
 
             .lightbox-nav {
@@ -395,17 +396,37 @@
     <div id="allPhotos" class="all-photos">
         <div class="all-photos-header">
             <h2 class="all-photos-title" id="allPhotosTitle">All photos</h2>
-            <button class="all-photos-close" id="allPhotosClose" aria-label="Close">&times;</button>
+            <button class="all-photos-close" id="allPhotosClose" aria-label="Close">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1L13 13M1 13L13 1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </button>
         </div>
         <div class="all-photos-grid" id="allPhotosGrid"></div>
     </div>
 
     <!-- Lightbox -->
     <div id="lightbox" class="lightbox">
-        <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1L13 13M1 13L13 1" stroke="currentColor" stroke="white" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </button>
         <span class="lightbox-counter" id="lightboxCounter"></span>
-        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">&#8249;</button>
-        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">&#8250;</button>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">
+            <svg width="12" height="18" viewBox="0 0 12 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 2L2 9L10 16" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+        </button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">
+            <svg width="12" height="18" viewBox="0 0 12 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 2L10 9L2 16" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+        </button>
         <div class="lightbox-img-wrap">
             <img id="lightboxImg" src="" alt="Room photo" />
         </div>
@@ -448,14 +469,32 @@
 
         /* ── Lightbox ─────────────────────────────────── */
 
+        let wasAllPhotosOpen = false;
+
         function openLightbox(index) {
             lightboxIndex = index;
             updateLightbox();
+
+            wasAllPhotosOpen = document.getElementById('allPhotos').classList.contains('open');
+            document.getElementById('root').style.display = 'none';
+            document.getElementById('allPhotos').style.display = 'none';
             document.getElementById('lightbox').classList.add('open');
+            window.scrollTo(0, 0);
+            setTimeout(postResize, 50);
         }
 
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('open');
+
+            if (wasAllPhotosOpen) {
+                document.getElementById('allPhotos').style.display = 'block'; // Or 'block', wait, .open manages it
+                // Actually, wait, .allPhotos.open has display: block. We just removed inline style 'none'.
+                document.getElementById('allPhotos').style.display = '';
+            } else {
+                document.getElementById('root').style.display = '';
+            }
+            window.scrollTo(0, 0);
+            setTimeout(postResize, 50);
         }
 
         function updateLightbox() {
@@ -505,13 +544,17 @@
                 const src = sanitizeUrl(url);
                 return src ? `<img src="${src}" alt="Photo ${i + 1}" loading="lazy" onclick="openLightbox(${i})" />` : '';
             }).join('');
+            document.getElementById('root').style.display = 'none';
             document.getElementById('allPhotos').classList.add('open');
-            document.body.style.overflow = 'hidden';
+            window.scrollTo(0, 0);
+            setTimeout(postResize, 50);
         }
 
         function closeAllPhotos() {
             document.getElementById('allPhotos').classList.remove('open');
-            document.body.style.overflow = '';
+            document.getElementById('root').style.display = '';
+            window.scrollTo(0, 0);
+            setTimeout(postResize, 50);
         }
 
         document.getElementById('allPhotosClose').addEventListener('click', closeAllPhotos);

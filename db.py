@@ -1,13 +1,60 @@
 import os
 import logging
-from supabase import create_client, Client
+from contextlib import contextmanager
 
-# Log all Supabase/PostgREST HTTP requests for debugging
-logging.basicConfig(level=logging.INFO)
-logging.getLogger("httpx").setLevel(logging.DEBUG)
-logging.getLogger("httpcore").setLevel(logging.DEBUG)
+import psycopg2
+import psycopg2.pool
+import psycopg2.extras
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+logger = logging.getLogger(__name__)
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+_pool = psycopg2.pool.SimpleConnectionPool(1, 5, DATABASE_URL)
+
+
+@contextmanager
+def get_conn():
+    """Yield a connection from the pool, auto-commit on success, rollback on error."""
+    conn = _pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _pool.putconn(conn)
+
+
+def fetch_all(sql, params=None):
+    """Execute a SELECT and return all rows as a list of dicts."""
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, params)
+            return [dict(row) for row in cur.fetchall()]
+
+
+def fetch_one(sql, params=None):
+    """Execute a SELECT and return a single row as a dict, or None."""
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+def execute(sql, params=None):
+    """Execute an INSERT/UPDATE/DELETE with no return value."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+
+
+def execute_returning(sql, params=None):
+    """Execute an INSERT ... RETURNING and return the first row as a dict."""
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            return dict(row) if row else None

@@ -3,71 +3,22 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
-os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-service-key")
+os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/db")
+
+import sys
+from unittest.mock import patch, MagicMock
+
+# Mock psycopg2 pool before db/server imports
+sys.modules['psycopg2'] = MagicMock()
+sys.modules['psycopg2.pool'] = MagicMock()
+sys.modules['psycopg2.extras'] = MagicMock()
 
 import server
 
 
-class FakeResponse:
-    def __init__(self, data):
-        self.data = data
+import db
 
-
-class FakeTableQuery:
-    def __init__(self, table, state):
-        self.table = table
-        self.state = state
-        self.payload = None
-        self.filters = {}
-
-    def select(self, _):
-        return self
-
-    def eq(self, key, value):
-        self.filters[key] = value
-        return self
-
-    def maybe_single(self):
-        self.state["guest_lookup_email"] = self.filters.get("email")
-        return self
-
-    def single(self):
-        self.state["unit_lookup_id"] = self.filters.get("id")
-        return self
-
-    def update(self, payload):
-        self.payload = payload
-        return self
-
-    def insert(self, payload):
-        self.payload = payload
-        if self.table == "bookings":
-            self.state["reservation_insert_payload"] = payload
-        return self
-
-    def execute(self):
-        if self.table == "guests":
-            if self.payload is None:
-                data = {"id": self.state["existing_guest_id"]} if self.state["existing_guest_id"] else None
-                return FakeResponse(data)
-            if "email" in self.payload:
-                self.state["guest_insert_payload"] = self.payload
-                return FakeResponse([{"id": self.state["inserted_guest_id"]}])
-            self.state["guest_update_payload"] = self.payload
-            self.state["guest_update_id"] = self.filters.get("id")
-            return FakeResponse([])
-
-        if self.table == "rooms":
-            return FakeResponse(self.state["unit"])
-
-        if self.table == "bookings":
-            return FakeResponse([{"ok": True}])
-
-        raise AssertionError(f"Unexpected table {self.table}")
-
-
-class FakeSupabase:
+class MockDB:
     def __init__(self, *, existing_guest_id=None):
         self.state = {
             "existing_guest_id": existing_guest_id,
@@ -77,12 +28,56 @@ class FakeSupabase:
                 "name": "Sova House",
                 "property_id": "acc-1",
                 "images": ["https://example.com/cover.jpg"],
-                "properties": {"name": "Vysota 890"},
+                "p_name": "Vysota 890",
+                "p_city": "Vysota 890",
             },
+            "reservation_insert_payload": None,
+            "guest_update_payload": None,
+            "guest_insert_payload": None,
+            "guest_update_id": None,
         }
 
-    def table(self, name):
-        return FakeTableQuery(name, self.state)
+    def fetch_one(self, sql, params=None):
+        if "FROM rooms" in sql:
+            return self.state["unit"]
+        if "FROM guests" in sql:
+            if self.state["existing_guest_id"]:
+                return {"id": self.state["existing_guest_id"]}
+            return None
+        return None
+
+    def execute(self, sql, params=None):
+        if "UPDATE guests" in sql:
+            self.state["guest_update_payload"] = {
+                "name": params[0],
+                "phone": params[1],
+            }
+            self.state["guest_update_id"] = params[2]
+        elif "INSERT INTO bookings" in sql:
+            self.state["reservation_insert_payload"] = {
+                "property_id": params[0],
+                "unit_id": params[1],
+                "guest_id": params[2],
+                "check_in": params[3],
+                "check_out": params[4],
+                "guests_count": params[5],
+                "total_price": params[6],
+                "currency_code": params[7],
+                "status": params[8],
+                "ai_handled": params[9],
+                "source": params[10],
+            }
+            
+    def execute_returning(self, sql, params=None):
+        if "INSERT INTO guests" in sql:
+            self.state["guest_insert_payload"] = {
+                "property_id": params[0],
+                "name": params[1],
+                "email": params[2],
+                "phone": params[3],
+            }
+            return {"id": self.state["inserted_guest_id"]}
+        return None
 
 
 class BookConfirmEmailTests(unittest.TestCase):
@@ -101,10 +96,11 @@ class BookConfirmEmailTests(unittest.TestCase):
         )
 
     def test_email_success_path_and_args(self):
-        fake = FakeSupabase()
-        with patch.object(server, "supabase", fake), patch.object(
-            server, "_send_booking_confirmation_email"
-        ) as send_email:
+        db_mock = MockDB()
+        with patch.object(server, "fetch_one", side_effect=db_mock.fetch_one), \
+             patch.object(server, "execute", side_effect=db_mock.execute), \
+             patch.object(server, "execute_returning", side_effect=db_mock.execute_returning), \
+             patch.object(server, "_send_booking_confirmation_email") as send_email:
             result = self.call_book_confirm()
 
         self.assertEqual(result["structuredContent"]["status"], "confirmed")
@@ -118,10 +114,11 @@ class BookConfirmEmailTests(unittest.TestCase):
         self.assertEqual(kwargs["check_out"], date(2026, 3, 12))
 
     def test_email_failure_is_non_blocking(self):
-        fake = FakeSupabase()
-        with patch.object(server, "supabase", fake), patch.object(
-            server, "_send_booking_confirmation_email", side_effect=RuntimeError("email down")
-        ):
+        db_mock = MockDB()
+        with patch.object(server, "fetch_one", side_effect=db_mock.fetch_one), \
+             patch.object(server, "execute", side_effect=db_mock.execute), \
+             patch.object(server, "execute_returning", side_effect=db_mock.execute_returning), \
+             patch.object(server, "_send_booking_confirmation_email", side_effect=RuntimeError("email down")):
             result = self.call_book_confirm()
 
         self.assertEqual(result["structuredContent"]["status"], "confirmed")
@@ -157,13 +154,14 @@ class BookConfirmEmailTests(unittest.TestCase):
         self.assertEqual(vars_["companyName"], "Vysota 890")
 
     def test_reservation_insert_and_response_regression(self):
-        fake = FakeSupabase(existing_guest_id="guest-existing-1")
-        with patch.object(server, "supabase", fake), patch.object(
-            server, "_send_booking_confirmation_email"
-        ):
+        db_mock = MockDB(existing_guest_id="guest-existing-1")
+        with patch.object(server, "fetch_one", side_effect=db_mock.fetch_one), \
+             patch.object(server, "execute", side_effect=db_mock.execute), \
+             patch.object(server, "execute_returning", side_effect=db_mock.execute_returning), \
+             patch.object(server, "_send_booking_confirmation_email"):
             result = self.call_book_confirm()
 
-        reservation_payload = fake.state["reservation_insert_payload"]
+        reservation_payload = db_mock.state["reservation_insert_payload"]
         self.assertEqual(reservation_payload["unit_id"], "unit-1")
         self.assertEqual(reservation_payload["guests_count"], 3)
         self.assertEqual(reservation_payload["total_price"], 450.0)
