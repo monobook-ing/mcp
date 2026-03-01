@@ -918,6 +918,9 @@
         sources.push(output?.result);
         sources.push(output?.result?.structuredContent);
       }
+      if (window._mcpBookingPayloads) {
+        sources.push(...window._mcpBookingPayloads);
+      }
 
       for (const candidate of sources) {
         if (isStructuredBookingPayload(candidate)) return candidate;
@@ -1455,6 +1458,8 @@
       if (msg.jsonrpc !== '2.0' || msg.method !== 'ui/notifications/tool-result') return;
       if (normalizeBookingPayload(msg)) {
         clearReserveError();
+        if (!window._mcpBookingPayloads) window._mcpBookingPayloads = [];
+        window._mcpBookingPayloads.push(msg);
       }
       hydrate(msg);
     });
