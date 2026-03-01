@@ -2,54 +2,30 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-service-key")
+os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/db")
+
+import sys
+from unittest.mock import patch, MagicMock
+
+# Mock psycopg2 pool before db/server imports
+sys.modules['psycopg2'] = MagicMock()
+sys.modules['psycopg2.pool'] = MagicMock()
+sys.modules['psycopg2.extras'] = MagicMock()
 
 import server
 
 
-class FakeResponse:
-    def __init__(self, data):
-        self.data = data
+import db
 
+def fake_fetch_all(rows):
+    def fetch_all(sql, params=None):
+        return rows
+    return fetch_all
 
-class FakeSingleQuery:
-    """Simulates .single() returning a single dict."""
-    def __init__(self, data):
-        self._data = data
-
-    def execute(self):
-        return FakeResponse(self._data)
-
-
-class FakeQuery:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def select(self, _):
-        return self
-
-    def eq(self, *_):
-        return self
-
-    def ilike(self, *_):
-        return self
-
-    def single(self):
-        if self._rows:
-            return FakeSingleQuery(self._rows[0])
-        return FakeSingleQuery(None)
-
-    def execute(self):
-        return FakeResponse(self._rows)
-
-
-class FakeSupabase:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def table(self, _):
-        return FakeQuery(self._rows)
+def fake_fetch_one(rows):
+    def fetch_one(sql, params=None):
+        return rows[0] if rows else None
+    return fetch_one
 
 
 def make_room(
@@ -77,18 +53,16 @@ def make_room(
             "https://example.com/img3.jpg",
         ],
         "amenities": ["Kitchen", "Wifi"],
-        "properties": {
-            "city": city,
-            "state": state,
-            "country": country,
-        },
+        "p_city": city,
+        "p_state": state,
+        "p_country": country,
     }
 
 
 class RoomGalleryTests(unittest.TestCase):
     def run_gallery(self, rows, **kwargs):
-        fake = FakeSupabase(rows=rows)
-        with patch.object(server, "supabase", fake):
+        with patch.object(server, "fetch_all", side_effect=fake_fetch_all(rows)), \
+             patch.object(server, "fetch_one", side_effect=fake_fetch_one(rows)):
             return server.room_gallery(**kwargs)
 
     def test_lookup_by_uuid(self):

@@ -16,7 +16,7 @@ load_dotenv()
 
 from fastmcp import FastMCP
 
-from db import supabase
+from db import fetch_all, fetch_one, execute, execute_returning
 
 # ── Server ──────────────────────────────────────────────────────────────────
 
@@ -222,21 +222,28 @@ def search_hotels(
     """Search accommodations by hotel name, city, coordinates, or country.
     Returns matching hotels with basic info."""
 
-    query = supabase.table("properties").select("*")
+    conditions = []
+    params = []
 
     if hotel_name:
-        query = query.ilike("name", f"%{hotel_name}%")
+        conditions.append("name ILIKE %s")
+        params.append(f"%{hotel_name}%")
     if city:
-        query = query.ilike("city", f"%{city}%")
+        conditions.append("city ILIKE %s")
+        params.append(f"%{city}%")
     if country:
-        query = query.ilike("country", f"%{country}%")
+        conditions.append("country ILIKE %s")
+        params.append(f"%{country}%")
     if lat is not None and lng is not None:
         delta = 0.5
-        query = query.gte("lat", lat - delta).lte("lat", lat + delta)
-        query = query.gte("lng", lng - delta).lte("lng", lng + delta)
+        conditions.append("lat >= %s AND lat <= %s")
+        params.extend([lat - delta, lat + delta])
+        conditions.append("lng >= %s AND lng <= %s")
+        params.extend([lng - delta, lng + delta])
 
-    result = query.execute()
-    hotels = result.data
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    sql = f"SELECT * FROM properties {where}"
+    hotels = fetch_all(sql, params or None)
 
     return {
         "hotels": hotels,
@@ -309,40 +316,75 @@ def search_rooms(
             )
         )
 
-        if normalized_query and normalized_query not in searchable_blob:
-            return False
+        if normalized_query:
+            query_terms = [t for t in normalized_query.split() if len(t) > 2]
+            if not query_terms:
+                query_terms = normalized_query.split()
+            for term in query_terms:
+                if term not in searchable_blob:
+                    return False
+
         if normalized_amenity and normalized_amenity not in amenities_blob:
             return False
         return True
 
-    def build_query(include_country: bool):
-        q = supabase.table("rooms").select(
-            "*, properties!inner(city, state, country, rating, image_url, lat, lng)"
-        )
+    def _row_to_unit(row):
+        """Convert a flat SQL row into the nested dict structure expected downstream."""
+        d = dict(row)
+        d["properties"] = {
+            "city": d.pop("p_city", None),
+            "state": d.pop("p_state", None),
+            "country": d.pop("p_country", None),
+            "rating": d.pop("p_rating", None),
+            "image_url": d.pop("p_image_url", None),
+            "lat": d.pop("p_lat", None),
+            "lng": d.pop("p_lng", None),
+            "name": d.pop("p_name", None),
+        }
+        return d
+
+    def run_room_query(include_country: bool):
+        conditions = []
+        params = []
 
         if hotel_name:
-            q = q.ilike("properties.city", f"%{hotel_name}%")
+            conditions.append("p.city ILIKE %s")
+            params.append(f"%{hotel_name}%")
         if city:
-            q = q.ilike("properties.city", f"%{city}%")
+            conditions.append("p.city ILIKE %s")
+            params.append(f"%{city}%")
         if include_country and country:
-            q = q.ilike("properties.country", f"%{country}%")
+            conditions.append("p.country ILIKE %s")
+            params.append(f"%{country}%")
         if unit_type:
-            q = q.ilike("type", f"%{unit_type}%")
+            conditions.append("r.type ILIKE %s")
+            params.append(f"%{unit_type}%")
         if max_price is not None:
-            q = q.lte("price_per_night", max_price)
+            conditions.append("r.price_per_night <= %s")
+            params.append(max_price)
         if min_guests is not None:
-            q = q.gte("max_guests", min_guests)
+            conditions.append("r.max_guests >= %s")
+            params.append(min_guests)
 
-        return q
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        sql = f"""
+            SELECT r.*,
+                   p.city AS p_city, p.state AS p_state, p.country AS p_country,
+                   p.rating AS p_rating, p.image_url AS p_image_url,
+                   p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name
+            FROM rooms r
+            JOIN properties p ON r.property_id = p.id
+            {where}
+        """
+        rows = fetch_all(sql, params or None)
+        return [_row_to_unit(r) for r in rows]
 
-    result = build_query(include_country=True).execute()
-    units = [u for u in (result.data or []) if unit_matches_text_filters(u)]
+    units = [u for u in run_room_query(include_country=True) if unit_matches_text_filters(u)]
     relaxed_country_filter = False
 
     # If city+country yields nothing, retry city-only for region ambiguities
     if not units and city and country:
-        relaxed_units = build_query(include_country=False).execute().data or []
-        relaxed_units = [u for u in relaxed_units if unit_matches_text_filters(u)]
+        relaxed_units = [u for u in run_room_query(include_country=False) if unit_matches_text_filters(u)]
         if relaxed_units:
             units = relaxed_units
             relaxed_country_filter = True
@@ -512,6 +554,20 @@ def book(
     Can be called when the user requests a reservation from chat,
     or when they click Reserve in the room card."""
 
+    def _row_to_unit(row):
+        d = dict(row)
+        d["properties"] = {
+            "city": d.pop("p_city", None),
+            "state": d.pop("p_state", None),
+            "country": d.pop("p_country", None),
+            "rating": d.pop("p_rating", None),
+            "image_url": d.pop("p_image_url", None),
+            "lat": d.pop("p_lat", None),
+            "lng": d.pop("p_lng", None),
+            "name": d.pop("p_name", None),
+        }
+        return d
+
     unit = None
     looks_like_uuid = bool(
         unit_id
@@ -519,36 +575,40 @@ def book(
         and unit_id.count("-") == 4
     )
 
+    base_sql = """
+        SELECT r.*,
+               p.city AS p_city, p.state AS p_state, p.country AS p_country,
+               p.rating AS p_rating, p.image_url AS p_image_url,
+               p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name
+        FROM rooms r
+        JOIN properties p ON r.property_id = p.id
+    """
+
     # Backward-compatible lookup path for older clients that still send unit_id.
     if looks_like_uuid:
-        unit_result = (
-            supabase.table("rooms")
-            .select("*, properties!inner(*)")
-            .eq("id", unit_id)
-            .single()
-            .execute()
-        )
-        unit = unit_result.data
+        sql = base_sql + " WHERE r.id = %s"
+        row = fetch_one(sql, [unit_id])
+        if row:
+            unit = _row_to_unit(row)
     else:
         lookup_name = (unit_name or unit_id).strip()
         if not lookup_name:
             raise ValueError("Either unit_name or unit_id is required.")
 
-        unit_query = (
-            supabase.table("rooms")
-            .select("*, properties!inner(*)")
-            .eq("name", lookup_name)
-        )
+        params = [lookup_name]
+        sql = base_sql + " WHERE r.name = %s"
+        
         if hotel_name:
-            unit_query = unit_query.eq("properties.city", hotel_name)
+            sql += " AND p.city = %s"
+            params.append(hotel_name)
 
-        unit_rows = unit_query.execute().data or []
-        if not unit_rows:
+        rows = fetch_all(sql, params)
+        if not rows:
             raise ValueError(
                 f"Unable to find unit '{lookup_name}'"
                 + (f" at hotel '{hotel_name}'." if hotel_name else ".")
             )
-        unit = unit_rows[0]
+        unit = _row_to_unit(rows[0])
 
     check_in_date = check_in
     check_out_date = check_out
@@ -617,15 +677,36 @@ def book_confirm(
     """Confirm a booking with guest details and finalize the reservation.
     Can be called from the widget form submission or directly from chat."""
 
+    def _row_to_unit(row):
+        d = dict(row)
+        d["properties"] = {
+            "city": d.pop("p_city", None),
+            "state": d.pop("p_state", None),
+            "country": d.pop("p_country", None),
+            "rating": d.pop("p_rating", None),
+            "image_url": d.pop("p_image_url", None),
+            "lat": d.pop("p_lat", None),
+            "lng": d.pop("p_lng", None),
+            "name": d.pop("p_name", None),
+        }
+        return d
+
     # Get unit info (moved up so property_id is available for guest upsert)
-    unit = (
-        supabase.table("rooms")
-        .select("*, properties!inner(*)")
-        .eq("id", unit_id)
-        .single()
-        .execute()
-        .data
-    )
+    sql = """
+        SELECT r.*,
+               p.city AS p_city, p.state AS p_state, p.country AS p_country,
+               p.rating AS p_rating, p.image_url AS p_image_url,
+               p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name
+        FROM rooms r
+        JOIN properties p ON r.property_id = p.id
+        WHERE r.id = %s
+    """
+    row = fetch_one(sql, [unit_id])
+    if not row:
+        raise ValueError(f"Unable to find unit with id '{unit_id}'")
+    
+    unit = _row_to_unit(row)
+    
     if unit_name and unit_name.strip() != unit["name"]:
         raise ValueError(
             f"Unit name mismatch for unit_id '{unit_id}': expected '{unit['name']}', got '{unit_name.strip()}'."
@@ -633,34 +714,26 @@ def book_confirm(
 
     property_id = unit["property_id"]
 
-    # Upsert guest. Supabase may return None or a result object with dict/list data.
-    existing = (
-        supabase.table("guests")
-        .select("id")
-        .eq("email", guest_email)
-        .eq("property_id", property_id)
-        .maybe_single()
-        .execute()
+    # Upsert guest
+    existing_data = fetch_one(
+        "SELECT id FROM guests WHERE email = %s AND property_id = %s LIMIT 1",
+        [guest_email, property_id]
     )
-    existing_data = existing.data if existing is not None else None
-    if isinstance(existing_data, list):
-        existing_data = existing_data[0] if existing_data else None
 
     if existing_data:
         guest_id = existing_data["id"]
-        supabase.table("guests").update(
-            {"name": guest_name, "phone": guest_phone, "updated_at": "now()"}
-        ).eq("id", guest_id).execute()
-    else:
-        guest_insert = (
-            supabase.table("guests")
-            .insert({"property_id": property_id, "name": guest_name, "email": guest_email, "phone": guest_phone})
-            .execute()
+        execute(
+            "UPDATE guests SET name = %s, phone = %s, updated_at = now() WHERE id = %s",
+            [guest_name, guest_phone, guest_id]
         )
-        inserted_rows = guest_insert.data if guest_insert is not None else None
-        if not inserted_rows:
+    else:
+        inserted_row = execute_returning(
+            "INSERT INTO guests (property_id, name, email, phone) VALUES (%s, %s, %s, %s) RETURNING id",
+            [property_id, guest_name, guest_email, guest_phone]
+        )
+        if not inserted_row:
             raise RuntimeError("Failed to create guest record for booking confirmation.")
-        guest_id = inserted_rows[0]["id"]
+        guest_id = inserted_row["id"]
 
     # Generate confirmation code
     confirmation_code = f"BK-{uuid.uuid4().hex[:6].upper()}"
@@ -670,22 +743,19 @@ def book_confirm(
     check_out_date = check_out
     nights = (check_out_date - check_in_date).days
 
-    supabase.table("bookings").insert(
-        {
-            "property_id": property_id,
-            "room_id": unit_id,
-            "guest_id": guest_id,
-            "check_in": check_in_date.isoformat(),
-            "check_out": check_out_date.isoformat(),
-            "guests_count": guests,
-            "total_price": total_price,
-            "currency_code": currency_code,
-            "status": "confirmed",
-            "ai_handled": True,
-            "source": "chatgpt",
-        }
-    ).execute()
-
+    execute(
+        """
+        INSERT INTO bookings 
+        (property_id, room_id, guest_id, check_in, check_out, guests_count, 
+         total_price, currency_code, status, ai_handled, source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        [
+            property_id, unit_id, guest_id, check_in_date.isoformat(), 
+            check_out_date.isoformat(), guests, total_price, currency_code, 
+            "confirmed", True, "chatgpt"
+        ]
+    )
     structured = {
         "confirmation_code": confirmation_code,
         "status": "confirmed",
@@ -765,6 +835,15 @@ def room_gallery(
     """Show the photo gallery for a room/unit.
     Returns interactive gallery widget with all room images."""
 
+    def _row_to_unit(row):
+        d = dict(row)
+        d["properties"] = {
+            "city": d.pop("p_city", None),
+            "state": d.pop("p_state", None),
+            "country": d.pop("p_country", None),
+        }
+        return d
+
     unit = None
     looks_like_uuid = bool(
         room_id
@@ -772,30 +851,27 @@ def room_gallery(
         and room_id.count("-") == 4
     )
 
+    base_sql = """
+        SELECT r.*,
+               p.city AS p_city, p.state AS p_state, p.country AS p_country
+        FROM rooms r
+        JOIN properties p ON r.property_id = p.id
+    """
+
     if looks_like_uuid:
-        unit_result = (
-            supabase.table("rooms")
-            .select("*, properties!inner(city, state, country)")
-            .eq("id", room_id)
-            .single()
-            .execute()
-        )
-        unit = unit_result.data
+        row = fetch_one(base_sql + " WHERE r.id = %s", [room_id])
+        if row:
+            unit = _row_to_unit(row)
     else:
         lookup_name = (room_name or room_id).strip()
         if not lookup_name:
             raise ValueError("Either room_name or room_id is required.")
 
-        unit_rows = (
-            supabase.table("rooms")
-            .select("*, properties!inner(city, state, country)")
-            .eq("name", lookup_name)
-            .execute()
-        ).data or []
-
-        if not unit_rows:
+        rows = fetch_all(base_sql + " WHERE r.name = %s", [lookup_name])
+        
+        if not rows:
             raise ValueError(f"Unable to find room '{lookup_name}'.")
-        unit = unit_rows[0]
+        unit = _row_to_unit(rows[0])
 
     images = unit.get("images")
     if not isinstance(images, list):

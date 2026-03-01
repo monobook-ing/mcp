@@ -2,48 +2,27 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-service-key")
+os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/db")
+
+import sys
+from unittest.mock import patch, MagicMock
+
+# Mock psycopg2 pool before db/server imports
+sys.modules['psycopg2'] = MagicMock()
+sys.modules['psycopg2.pool'] = MagicMock()
+sys.modules['psycopg2.extras'] = MagicMock()
 
 import server
 
 
-class FakeResponse:
-    def __init__(self, data):
-        self.data = data
+import db
 
-
-class FakeQuery:
-    def __init__(self, responses):
-        self._responses = responses
-
-    def select(self, _):
-        return self
-
-    def ilike(self, *_):
-        return self
-
-    def lte(self, *_):
-        return self
-
-    def gte(self, *_):
-        return self
-
-    def contains(self, *_):
-        raise AssertionError("contains() should not be used for amenities filtering")
-
-    def execute(self):
-        if not self._responses:
-            raise AssertionError("No fake responses left for execute()")
-        return FakeResponse(self._responses.pop(0))
-
-
-class FakeSupabase:
-    def __init__(self, responses):
-        self._responses = list(responses)
-
-    def table(self, _):
-        return FakeQuery(self._responses)
+def fake_fetch_all(responses):
+    def fetch_all(sql, params=None):
+        if not responses:
+            raise AssertionError("No fake responses left for fetch_all()")
+        return responses.pop(0)
+    return fetch_all
 
 
 def make_unit(
@@ -68,23 +47,20 @@ def make_unit(
         "bed_config": "2 beds",
         "images": ["https://example.com/1.jpg"],
         "amenities": amenities if amenities is not None else ["Pool", "Hot tub", "Sauna"],
-        "properties": {
-            "name": "Vysota 890",
-            "city": city,
-            "state": state,
-            "country": country,
-            "rating": "4.9",
-            "image_url": "https://example.com/hotel.jpg",
-            "lat": 49.0,
-            "lng": 23.0,
-        },
+        "p_name": "Vysota 890",
+        "p_city": city,
+        "p_state": state,
+        "p_country": country,
+        "p_rating": "4.9",
+        "p_image_url": "https://example.com/hotel.jpg",
+        "p_lat": 49.0,
+        "p_lng": 23.0,
     }
 
 
 class SearchRoomsTests(unittest.TestCase):
     def run_search(self, responses, **kwargs):
-        fake = FakeSupabase(responses=responses)
-        with patch.object(server, "supabase", fake):
+        with patch.object(server, "fetch_all", side_effect=fake_fetch_all(list(responses))):
             return server.search_rooms(**kwargs)
 
     def test_regression_no_jsonb_contains_error(self):
