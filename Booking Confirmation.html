@@ -1,162 +1,201 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Booking Confirmation</title>
   <style>
-    :root{
-      --bg:#f3f4f6;
-      --card:#ffffff;
-      --text:#111827;
-      --muted:#6b7280;
-      --border: rgba(17,24,39,.10);
-      --divider: rgba(17,24,39,.08);
-      --shadow: 0 24px 60px rgba(0,0,0,.14);
-      --shadow-soft: 0 10px 30px rgba(0,0,0,.10);
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: rgba(17, 24, 39, .10);
+      --divider: rgba(17, 24, 39, .08);
+      --shadow: 0 24px 60px rgba(0, 0, 0, .14);
+      --shadow-soft: 0 10px 30px rgba(0, 0, 0, .10);
       --radius: 28px;
-      --focus: rgba(17,24,39,.22);
-      --cta:#111827;
-      --ctaText:#ffffff;
-      --pill: rgba(17,24,39,.06);
+      --focus: rgba(17, 24, 39, .22);
+      --cta: #111827;
+      --ctaText: #ffffff;
+      --pill: rgba(17, 24, 39, .06);
     }
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       background: radial-gradient(1200px 700px at 20% 0%, #e9eef7 0%, var(--bg) 55%, #eef2f7 100%);
       color: var(--text);
       padding: clamp(18px, 3vw, 48px);
     }
 
-    .wrap{
+    .wrap {
       max-width: 1020px;
       margin: 0 auto;
-      display:grid;
+      display: grid;
       gap: 18px;
       place-items: start center;
     }
 
-    .confirmation{
-      width:min(860px, 100%);
+    .confirmation {
+      width: min(860px, 100%);
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      overflow:hidden;
+      overflow: hidden;
     }
 
-    .hero{
-      position:relative;
+    .hero {
+      position: relative;
       height: 190px;
       background:
-        radial-gradient(900px 420px at 80% 20%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%),
+        radial-gradient(900px 420px at 80% 20%, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 60%),
         linear-gradient(135deg, #0b1020 0%, #2b3c6e 45%, #c99a54 100%);
     }
-    .hero::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background: linear-gradient(to bottom, rgba(0,0,0,.05), rgba(0,0,0,.55));
-      pointer-events:none;
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, .05), rgba(0, 0, 0, .55));
+      pointer-events: none;
     }
 
-    .hero-inner{
-      position:absolute;
+    .hero-inner {
+      position: absolute;
       inset: 16px 18px;
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       gap: 12px;
       z-index: 2;
-      color:#fff;
+      color: #fff;
     }
 
-    .hero-title{
-      display:flex;
-      flex-direction:column;
-      gap: 6px;
-      min-width:0;
+    .hero-badge-row {
+      display: flex;
+      justify-content: flex-end;
     }
-    .hero-title h1{
-      margin:0;
+
+    .hero-title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .hero-title h1 {
+      margin: 0;
       font-size: 26px;
       letter-spacing: -0.4px;
       font-weight: 950;
-      line-height:1.15;
-      text-shadow: 0 14px 30px rgba(0,0,0,.35);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 560px;
-    }
-    .hero-title p{
-      margin:0;
-      color: rgba(255,255,255,.85);
-      font-weight: 650;
-      text-shadow: 0 14px 30px rgba(0,0,0,.35);
+      line-height: 1.15;
+      text-shadow: 0 14px 30px rgba(0, 0, 0, .35);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      white-space: normal;
     }
 
-    .status-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 10px 12px;
       border-radius: 999px;
-      background: rgba(255,255,255,.22);
-      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255, 255, 255, .22);
+      border: 1px solid rgba(255, 255, 255, .22);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       box-shadow: var(--shadow-soft);
       font-weight: 800;
-      white-space:nowrap;
-    }
-    .status-pill .dot{
-      width:9px;height:9px;border-radius:50%;
-      background: rgba(34,197,94,.95);
-      box-shadow: 0 0 0 4px rgba(34,197,94,.18);
+      white-space: nowrap;
     }
 
-    .content{
+    .status-pill .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(34, 197, 94, .95);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, .18);
+    }
+
+    .content {
       padding: 18px 22px 8px;
     }
 
-    .grid{
-      display:grid;
+    .grid {
+      display: grid;
       grid-template-columns: 1.05fr .95fr;
       gap: 16px;
     }
-    @media (max-width: 860px){
-      .grid{grid-template-columns: 1fr;}
-      .hero-title h1{max-width: 100%;}
+
+    @media (max-width: 860px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title h1 {
+        max-width: 100%;
+      }
     }
 
-    .panel{
+    .panel {
       border: 1px solid var(--border);
       border-radius: 22px;
-      overflow:hidden;
+      overflow: hidden;
       background: #fff;
     }
-    .panel-head{
+
+    .panel-head {
       padding: 14px 16px;
       border-bottom: 1px solid var(--divider);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      background: rgba(17,24,39,.02);
+      background: rgba(17, 24, 39, .02);
     }
-    .panel-head h2{
-      margin:0;
+
+    .panel-head h2 {
+      margin: 0;
       font-size: 16px;
       letter-spacing: -0.2px;
       font-weight: 950;
     }
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
+
+    .conf-number {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      background: rgba(17, 24, 39, .03);
+      border-bottom: 1px solid var(--divider);
+      letter-spacing: -0.1px;
+    }
+
+    .conf-number span {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 10px;
       border-radius: 999px;
       background: var(--pill);
@@ -164,34 +203,42 @@
       font-weight: 850;
       color: var(--text);
       font-size: 13px;
-      white-space:nowrap;
+      white-space: nowrap;
     }
-    .panel-body{
+
+    .panel-body {
       padding: 14px 16px;
     }
 
-    .kv{
-      display:grid;
+    .kv {
+      display: grid;
       grid-template-columns: 1fr auto;
       gap: 10px 12px;
-      align-items:baseline;
+      align-items: baseline;
       padding: 10px 0;
       border-bottom: 1px solid var(--divider);
     }
-    .kv:last-child{border-bottom:none;}
-    .k{
+
+    .kv:last-child {
+      border-bottom: none;
+    }
+
+    .k {
       color: var(--muted);
       font-weight: 750;
     }
-    .v{
+
+    .v {
       font-weight: 950;
       letter-spacing: -0.2px;
     }
-    .v.muted{
+
+    .v.muted {
       font-weight: 800;
       color: var(--muted);
     }
-    .link{
+
+    .link {
       color: var(--text);
       font-weight: 950;
       text-decoration: underline;
@@ -199,82 +246,101 @@
     }
 
     /* Weather */
-    .weather{
+    .weather {
       border-radius: 26px;
-      overflow:hidden;
+      overflow: hidden;
       background: linear-gradient(180deg, #1c72d4 0%, #2e9df0 100%);
-      color:#fff;
+      color: #fff;
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(255,255,255,.20);
+      border: 1px solid rgba(255, 255, 255, .20);
     }
-    .weather-inner{
+
+    .weather-inner {
       padding: 18px 18px 16px;
-      display:grid;
+      display: grid;
       gap: 12px;
-      text-align:center;
+      text-align: center;
     }
-    .wx-top{
-      display:flex;
-      align-items:center;
-      justify-content:center;
+
+    .wx-top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       gap: 18px;
       margin-top: 2px;
     }
-    .wx-temp{
+
+    .wx-temp {
       font-size: 72px;
       font-weight: 900;
       letter-spacing: -1px;
       line-height: 1;
     }
-    .wx-city{
+
+    .wx-city {
       font-size: 22px;
       font-weight: 700;
       opacity: .95;
     }
-    .wx-desc{
+
+    .wx-desc {
       font-size: 22px;
       font-weight: 650;
       opacity: .95;
       line-height: 1.35;
       padding: 0 10px 8px;
     }
-    .wx-icon{
-      width: 74px; height: 74px;
-      filter: drop-shadow(0 18px 28px rgba(0,0,0,.25));
+
+    .wx-icon {
+      width: 74px;
+      height: 74px;
+      filter: drop-shadow(0 18px 28px rgba(0, 0, 0, .25));
     }
 
     /* Calendar */
-    .calendar-wrap{
+    .calendar-wrap {
       margin-top: 16px;
       border-radius: 22px;
       border: 1px solid var(--border);
-      background:#fff;
+      background: #fff;
       box-shadow: var(--shadow-soft);
-      overflow:hidden;
-    }
-    .calendar-body{
-      padding: 16px;
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      gap: 14px;
-      align-items:start;
-    }
-    @media (max-width: 560px){
-      .calendar-body{grid-template-columns: 1fr; gap: 10px;}
-      .daybox{display:flex; align-items:baseline; gap: 10px;}
+      overflow: hidden;
     }
 
-    .daybox{
+    .calendar-body {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    @media (max-width: 560px) {
+      .calendar-body {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .daybox {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+    }
+
+    .daybox {
       padding: 8px 6px;
       color: var(--text);
     }
-    .dow{
+
+    .dow {
       font-weight: 750;
       color: var(--muted);
       font-size: 20px;
-      margin:0;
+      margin: 0;
     }
-    .dom{
+
+    .dom {
       font-size: 64px;
       font-weight: 950;
       letter-spacing: -1px;
@@ -282,75 +348,92 @@
       line-height: 1;
     }
 
-    .events{
-      display:flex;
-      flex-direction:column;
+    .events {
+      display: flex;
+      flex-direction: column;
       gap: 12px;
     }
-    .event{
-      display:grid;
+
+    .event {
+      display: grid;
       grid-template-columns: 6px 1fr;
       gap: 12px;
       padding: 14px 14px;
       border-radius: 18px;
-      background: rgba(17,24,39,.03);
-      border: 1px solid rgba(17,24,39,.06);
+      background: rgba(17, 24, 39, .03);
+      border: 1px solid rgba(17, 24, 39, .06);
     }
-    .event.selected{
+
+    .event.selected {
       outline: 2px dashed #1e6bf1;
       outline-offset: 2px;
       background: #fff;
     }
-    .bar{
+
+    .bar {
       width: 6px;
       border-radius: 999px;
       background: #ef4444;
     }
-    .bar.blue{background:#2563eb;}
-    .event h4{
-      margin:0;
+
+    .bar.blue {
+      background: #2563eb;
+    }
+
+    .event h4 {
+      margin: 0;
       font-size: 20px;
       letter-spacing: -0.2px;
       font-weight: 950;
     }
-    .event p{
+
+    .event p {
       margin: 4px 0 0 0;
       color: var(--muted);
       font-weight: 700;
       font-size: 18px;
     }
 
-    .calendar-actions{
+    .calendar-actions {
       padding: 14px 16px 18px;
-      display:flex;
+      display: flex;
       gap: 12px;
-      align-items:center;
+      align-items: center;
     }
-    @media (max-width: 560px){
-      .calendar-actions{flex-direction:column;}
+
+    @media (max-width: 560px) {
+      .calendar-actions {
+        flex-direction: column;
+      }
     }
-    .btn{
+
+    .btn {
       height: 54px;
       padding: 0 18px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(17,24,39,.04);
+      background: rgba(17, 24, 39, .04);
       color: var(--text);
       font-weight: 950;
       font-size: 16px;
-      cursor:pointer;
-      white-space:nowrap;
+      cursor: pointer;
+      white-space: nowrap;
     }
-    .btn.primary{
-      flex:1;
+
+    .btn.primary {
+      flex: 1;
       border: none;
       background: #111827;
       color: #fff;
-      box-shadow: 0 16px 30px rgba(17,24,39,.18);
+      box-shadow: 0 16px 30px rgba(17, 24, 39, .18);
     }
-    .btn:focus{outline:none; box-shadow: 0 0 0 4px var(--focus);}
 
-    .footer{
+    .btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .footer {
       padding: 0 22px 20px;
       color: var(--muted);
       font-weight: 650;
@@ -358,26 +441,33 @@
       line-height: 1.45;
     }
 
-    .hidden{display:none;}
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
   <main class="wrap">
 
     <section class="confirmation" aria-label="Booking confirmation">
       <div class="hero" role="img" aria-label="Booking hero">
         <div class="hero-inner">
+          <div class="hero-badge-row">
+            <div class="status-pill" aria-label="Confirmed">
+              <span class="dot" aria-hidden="true"></span> Confirmed
+            </div>
+          </div>
           <div class="hero-title">
             <h1 id="propertyName">Gont is a cozy house near Bukovel</h1>
-            <p id="bookingRef">Confirmation • #BK-20481</p>
-          </div>
-          <div class="status-pill" aria-label="Confirmed">
-            <span class="dot" aria-hidden="true"></span> Confirmed
           </div>
         </div>
       </div>
 
       <div class="content">
+        <div class="conf-number">
+          <span>Confirmation</span> <strong id="bookingRef">#BK-20481</strong>
+        </div>
         <div class="grid">
           <section class="panel" aria-label="Booking details">
             <header class="panel-head">
@@ -416,24 +506,28 @@
             <div class="weather-inner">
               <div class="wx-top">
                 <svg class="wx-icon" viewBox="0 0 96 96" fill="none" aria-hidden="true">
-                  <circle cx="52" cy="38" r="18" fill="#FFB020"/>
+                  <circle cx="52" cy="38" r="18" fill="#FFB020" />
                   <g stroke="#FFB020" stroke-width="4" stroke-linecap="round">
-                    <path d="M52 10v10"/><path d="M52 56v10"/>
-                    <path d="M24 38h10"/><path d="M70 38h10"/>
-                    <path d="M33 19l7 7"/><path d="M64 50l7 7"/>
-                    <path d="M71 19l-7 7"/><path d="M40 50l-7 7"/>
+                    <path d="M52 10v10" />
+                    <path d="M52 56v10" />
+                    <path d="M24 38h10" />
+                    <path d="M70 38h10" />
+                    <path d="M33 19l7 7" />
+                    <path d="M64 50l7 7" />
+                    <path d="M71 19l-7 7" />
+                    <path d="M40 50l-7 7" />
                   </g>
                   <path d="M38 62c-9 0-16-6-16-14s7-14 16-14c6 0 11 2 14 6 2-1 4-2 7-2 8 0 15 6 15 14s-7 14-15 14H38z"
-                        fill="rgba(255,255,255,.88)"/>
-                  <path d="M34 62c-7 0-12-5-12-11 0-6 5-11 12-11 5 0 9 2 11 5"
-                        fill="rgba(255,255,255,.72)"/>
+                    fill="rgba(255,255,255,.88)" />
+                  <path d="M34 62c-7 0-12-5-12-11 0-6 5-11 12-11 5 0 9 2 11 5" fill="rgba(255,255,255,.72)" />
                 </svg>
 
                 <div class="wx-temp" id="wxTemp">72°</div>
               </div>
 
               <div class="wx-city" id="wxCity">San Francisco</div>
-              <div class="wx-desc" id="wxDesc">Sunny sky and warm temperatures are expected for the rest of the afternoon.</div>
+              <div class="wx-desc" id="wxDesc">Sunny sky and warm temperatures are expected for the rest of the
+                afternoon.</div>
             </div>
           </section>
         </div>
@@ -480,7 +574,8 @@
       </div>
 
       <div class="footer" id="policy">
-        Free cancellation until <strong>March 13</strong> (local time). After that, cancellation may be non‑refundable depending on the host’s rules and timing.
+        Free cancellation until <strong>March 13</strong> (local time). After that, cancellation may be non‑refundable
+        depending on the host’s rules and timing.
       </div>
     </section>
 
@@ -493,7 +588,7 @@
       confirmationId: "BK-20481",
       guestsText: "1 adult · 1 pet",
       checkInISO: "2026-03-27T15:00:00",
-      checkOutISO:"2026-03-29T11:00:00",
+      checkOutISO: "2026-03-29T11:00:00",
       weather: {
         temp: "72°",
         city: "San Francisco",
@@ -505,18 +600,18 @@
     const fmtTime = (d) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     const fmtDow = (d) => d.toLocaleDateString(undefined, { weekday: "long" });
 
-    function withinNextDays(date, days){
+    function withinNextDays(date, days) {
       const now = new Date();
-      const end = new Date(now.getTime() + days*24*60*60*1000);
+      const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
       return date >= now && date <= end;
     }
-    function setText(id, value){ const el = document.getElementById(id); if(el) el.textContent = value; }
+    function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
 
     const checkIn = new Date(booking.checkInISO);
     const checkOut = new Date(booking.checkOutISO);
 
     setText("propertyName", booking.propertyName);
-    setText("bookingRef", "Confirmation • #" + booking.confirmationId);
+    setText("bookingRef", "#" + booking.confirmationId);
 
     const chip = `${fmtMonthDay(checkIn)} – ${fmtMonthDay(checkOut)}, ${checkOut.getFullYear()}`;
     setText("datesChip", chip);
@@ -526,14 +621,14 @@
     setText("dowText", fmtDow(checkIn));
     setText("domText", checkIn.getDate());
 
-    setText("eventCheckin", `${fmtTime(checkIn)} – ${fmtTime(new Date(checkIn.getTime() + 15*60*1000))}`);
-    setText("eventCheckout", `${fmtTime(checkOut)} – ${fmtTime(new Date(checkOut.getTime() + 15*60*1000))}`);
+    setText("eventCheckin", `${fmtTime(checkIn)} – ${fmtTime(new Date(checkIn.getTime() + 15 * 60 * 1000))}`);
+    setText("eventCheckout", `${fmtTime(checkOut)} – ${fmtTime(new Date(checkOut.getTime() + 15 * 60 * 1000))}`);
     setText("eventStay", `${fmtMonthDay(checkIn)} – ${fmtMonthDay(checkOut)}`);
 
     // Weather shown only if booking starts within next 2 weeks
     const showWeather = withinNextDays(checkIn, 14);
     const weatherSection = document.getElementById("weatherSection");
-    if(showWeather){
+    if (showWeather) {
       weatherSection.classList.remove("hidden");
       setText("wxTemp", booking.weather.temp);
       setText("wxCity", booking.weather.city);
@@ -541,15 +636,15 @@
     }
 
     // Add to calendar (.ics)
-    function toICSDateTime(dt){
-      const pad = (n)=> String(n).padStart(2,'0');
-      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+    function toICSDateTime(dt) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
     }
-    function toICSDate(dt){
-      const pad = (n)=> String(n).padStart(2,'0');
-      return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+    function toICSDate(dt) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
     }
-    function downloadICS(filename, content){
+    function downloadICS(filename, content) {
       const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -560,7 +655,7 @@
       a.remove();
       URL.revokeObjectURL(url);
     }
-    function buildICS(){
+    function buildICS() {
       const uidBase = booking.confirmationId + "-" + Date.now();
       const now = new Date();
 
@@ -587,7 +682,7 @@
         `UID:${uidBase}-checkin`,
         `DTSTAMP:${toICSDateTime(now)}`,
         `DTSTART:${toICSDateTime(checkIn)}`,
-        `DTEND:${toICSDateTime(new Date(checkIn.getTime() + 15*60*1000))}`,
+        `DTEND:${toICSDateTime(new Date(checkIn.getTime() + 15 * 60 * 1000))}`,
         `SUMMARY:Check-in — ${booking.propertyName}`,
         `DESCRIPTION:Booking ${booking.confirmationId}`,
         "END:VEVENT",
@@ -596,7 +691,7 @@
         `UID:${uidBase}-checkout`,
         `DTSTAMP:${toICSDateTime(now)}`,
         `DTSTART:${toICSDateTime(checkOut)}`,
-        `DTEND:${toICSDateTime(new Date(checkOut.getTime() + 15*60*1000))}`,
+        `DTEND:${toICSDateTime(new Date(checkOut.getTime() + 15 * 60 * 1000))}`,
         `SUMMARY:Check-out — ${booking.propertyName}`,
         `DESCRIPTION:Booking ${booking.confirmationId}`,
         "END:VEVENT",
@@ -614,4 +709,5 @@
     });
   </script>
 </body>
+
 </html>
