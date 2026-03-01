@@ -48,6 +48,7 @@ app = create_app()
 UNIT_CARD_WIDGET_URI = "ui://widget/unit-card.html"
 BOOKING_FORM_WIDGET_URI = "ui://widget/booking-form.html"
 BOOKING_CONFIRMATION_WIDGET_URI = "ui://widget/booking-confirmation.html"
+ROOM_GALLERY_WIDGET_URI = "ui://widget/room-gallery.html"
 
 MONOSEND_EMAILS_URL = "https://api.monosend.io/emails"
 MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
@@ -190,6 +191,20 @@ def booking_form_resource() -> str:
 )
 def booking_confirmation_resource() -> str:
     return load_widget("booking_confirmation")
+
+
+@mcp.resource(
+    uri=ROOM_GALLERY_WIDGET_URI,
+    name="Room Gallery Widget",
+    description="Displays a photo gallery for a hotel room with lightbox and full-screen view",
+    mime_type=RESOURCE_MIME,
+    meta={
+        "openai/widgetDescription": "Interactive photo gallery for a specific room. Shows images in a grid with lightbox navigation.",
+        "openai/widgetPrefersBorder": False,
+    },
+)
+def room_gallery_resource() -> str:
+    return load_widget("room_gallery")
 
 
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
@@ -728,6 +743,90 @@ def book_confirm(
         "_meta": {
             "ui": {"resourceUri": BOOKING_CONFIRMATION_WIDGET_URI},
             "openai/outputTemplate": BOOKING_CONFIRMATION_WIDGET_URI,
+            "openai/widgetAccessible": True,
+        },
+    }
+
+
+# ── Tool 5: room_gallery ─────────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": ROOM_GALLERY_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": ROOM_GALLERY_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def room_gallery(
+    room_id: str = "",
+    room_name: str = "",
+) -> dict:
+    """Show the photo gallery for a room/unit.
+    Returns interactive gallery widget with all room images."""
+
+    unit = None
+    looks_like_uuid = bool(
+        room_id
+        and len(room_id) == 36
+        and room_id.count("-") == 4
+    )
+
+    if looks_like_uuid:
+        unit_result = (
+            supabase.table("rooms")
+            .select("*, properties!inner(city, state, country)")
+            .eq("id", room_id)
+            .single()
+            .execute()
+        )
+        unit = unit_result.data
+    else:
+        lookup_name = (room_name or room_id).strip()
+        if not lookup_name:
+            raise ValueError("Either room_name or room_id is required.")
+
+        unit_rows = (
+            supabase.table("rooms")
+            .select("*, properties!inner(city, state, country)")
+            .eq("name", lookup_name)
+            .execute()
+        ).data or []
+
+        if not unit_rows:
+            raise ValueError(f"Unable to find room '{lookup_name}'.")
+        unit = unit_rows[0]
+
+    images = unit.get("images")
+    if not isinstance(images, list):
+        images = [str(images)] if images else []
+
+    accommodation = unit.get("properties") or {}
+
+    structured = {
+        "room_id": unit["id"],
+        "room_name": unit.get("name", ""),
+        "room_type": unit.get("type", ""),
+        "images": images,
+        "image_count": len(images),
+        "location": {
+            "city": accommodation.get("city"),
+            "state": accommodation.get("state"),
+            "country": accommodation.get("country"),
+        },
+    }
+
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": f"Showing {len(images)} photo(s) for {unit.get('name', 'room')}.",
+            }
+        ],
+        "structuredContent": structured,
+        "_meta": {
+            "ui": {"resourceUri": ROOM_GALLERY_WIDGET_URI},
+            "openai/outputTemplate": ROOM_GALLERY_WIDGET_URI,
             "openai/widgetAccessible": True,
         },
     }

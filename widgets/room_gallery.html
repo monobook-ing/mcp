@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Room Gallery</title>
+    <style>
+        :root {
+            --text: #0b1220;
+            --white: #fff;
+            --muted: rgba(255, 255, 255, .82);
+            --shadowSoft: 0 14px 34px rgba(0, 0, 0, .14);
+            --radius: 34px;
+            --btnText: #111827;
+            --focus: rgba(255, 255, 255, .25);
+            --border: rgba(17, 24, 39, .12);
+            --divider: rgba(17, 24, 39, .10);
+            --modalText: #111827;
+            --modalMuted: #6b7280;
+        }
+
+        html,
+        * {
+            box-sizing: border-box
+        }
+
+        html {
+            background: transparent;
+        }
+
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            background: transparent;
+            color: var(--text);
+            padding: 0;
+        }
+
+        #root {
+            background: transparent;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+        }
+
+        #loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* ── Gallery header ─────────────────────────────── */
+
+        .gallery-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .gallery-title {
+            margin: 0;
+            font-size: clamp(26px, 2.8vw, 44px);
+            line-height: 1.05;
+            letter-spacing: -.5px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .gallery-subtitle {
+            margin: 6px 0 0 0;
+            color: #4b5563;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* ── Grid gallery (same as unit_card details-gallery) ── */
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            border-radius: 22px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .gallery-main {
+            grid-row: 1 / -1;
+            position: relative;
+            min-height: 320px;
+            overflow: hidden;
+            background: #eef2f7;
+        }
+
+        .gallery-main img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform .3s ease;
+        }
+
+        .gallery-main:hover img {
+            transform: scale(1.02);
+        }
+
+        .gallery-side-item {
+            position: relative;
+            overflow: hidden;
+            background: #eef2f7;
+            aspect-ratio: 1 / 1;
+        }
+
+        .gallery-side-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform .3s ease;
+        }
+
+        .gallery-side-item:hover img {
+            transform: scale(1.04);
+        }
+
+        /* Show all button */
+        .show-all-wrap {
+            position: relative;
+        }
+
+        .show-all-btn {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            height: 44px;
+            padding: 0 20px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, .92);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: var(--shadowSoft);
+            color: #111827;
+            font-weight: 850;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform .15s ease;
+            z-index: 2;
+        }
+
+        .show-all-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .show-all-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ── Counter badge ──────────────────── */
+
+        .photo-count {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--modalMuted);
+        }
+
+        /* ── Lightbox overlay ──────────────────────────── */
+
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, .92);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .lightbox.open {
+            display: flex;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, .22);
+            background: rgba(255, 255, 255, .12);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, .22);
+        }
+
+        .lightbox-counter {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, .8);
+            font-size: 15px;
+            font-weight: 700;
+            z-index: 2;
+        }
+
+        .lightbox-img-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 60px 20px 20px;
+            overflow: hidden;
+        }
+
+        .lightbox-img-wrap img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .4);
+            user-select: none;
+        }
+
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .12);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            transition: background .15s;
+        }
+
+        .lightbox-nav:hover {
+            background: rgba(255, 255, 255, .24);
+        }
+
+        .lightbox-prev {
+            left: 16px;
+        }
+
+        .lightbox-next {
+            right: 16px;
+        }
+
+        /* ── All photos overlay ────────────────────────── */
+
+        .all-photos {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            background: #fff;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .all-photos.open {
+            display: block;
+        }
+
+        .all-photos-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, .92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .all-photos-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: -.3px;
+        }
+
+        .all-photos-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(17, 24, 39, .04);
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .all-photos-close:hover {
+            background: rgba(17, 24, 39, .08);
+        }
+
+        .all-photos-grid {
+            padding: 16px 20px 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+        }
+
+        .all-photos-grid img {
+            width: 100%;
+            border-radius: 12px;
+            cursor: pointer;
+            object-fit: cover;
+            aspect-ratio: 4 / 3;
+            transition: transform .2s ease;
+            background: #eef2f7;
+        }
+
+        .all-photos-grid img:hover {
+            transform: scale(1.02);
+        }
+
+        /* ── Responsive ────────────────────────────────── */
+
+        @media (max-width: 680px) {
+            .gallery-main {
+                min-height: 220px;
+            }
+
+            .gallery-title {
+                font-size: 28px;
+            }
+
+            .all-photos-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .lightbox-nav {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .lightbox-prev {
+                left: 8px;
+            }
+
+            .lightbox-next {
+                right: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root">
+        <div id="loading">Loading gallery...</div>
+    </div>
+
+    <!-- All photos overlay -->
+    <div id="allPhotos" class="all-photos">
+        <div class="all-photos-header">
+            <h2 class="all-photos-title" id="allPhotosTitle">All photos</h2>
+            <button class="all-photos-close" id="allPhotosClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="all-photos-grid" id="allPhotosGrid"></div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox">
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+        <span class="lightbox-counter" id="lightboxCounter"></span>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">&#8249;</button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">&#8250;</button>
+        <div class="lightbox-img-wrap">
+            <img id="lightboxImg" src="" alt="Room photo" />
+        </div>
+    </div>
+
+    <script>
+        let hydrated = false;
+        let hydrationTimeoutId = null;
+        let hydrationPollId = null;
+        let galleryImages = [];
+        let lightboxIndex = 0;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function sanitizeUrl(raw) {
+            const value = String(raw || '').trim();
+            if (!/^https?:\/\//i.test(value)) return '';
+            return value.replace(/"/g, '%22').replace(/'/g, '%27');
+        }
+
+        /* ── Resize for iframe ───────────────────────── */
+
+        function postResize() {
+            try {
+                const h = document.documentElement.scrollHeight;
+                window.parent.postMessage({ type: 'resize', height: h }, '*');
+            } catch (_) { }
+        }
+
+        const resizeObserver = new ResizeObserver(() => postResize());
+        resizeObserver.observe(document.documentElement);
+        window.addEventListener('resize', postResize);
+
+        /* ── Lightbox ─────────────────────────────────── */
+
+        function openLightbox(index) {
+            lightboxIndex = index;
+            updateLightbox();
+            document.getElementById('lightbox').classList.add('open');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('open');
+        }
+
+        function updateLightbox() {
+            const img = document.getElementById('lightboxImg');
+            const counter = document.getElementById('lightboxCounter');
+            const src = sanitizeUrl(galleryImages[lightboxIndex]);
+            img.src = src;
+            img.alt = `Photo ${lightboxIndex + 1}`;
+            counter.textContent = `${lightboxIndex + 1} / ${galleryImages.length}`;
+        }
+
+        document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+        document.getElementById('lightboxPrev').addEventListener('click', () => {
+            lightboxIndex = (lightboxIndex - 1 + galleryImages.length) % galleryImages.length;
+            updateLightbox();
+        });
+        document.getElementById('lightboxNext').addEventListener('click', () => {
+            lightboxIndex = (lightboxIndex + 1) % galleryImages.length;
+            updateLightbox();
+        });
+
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget || e.target.classList.contains('lightbox-img-wrap')) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const lb = document.getElementById('lightbox');
+            if (!lb.classList.contains('open')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') {
+                lightboxIndex = (lightboxIndex - 1 + galleryImages.length) % galleryImages.length;
+                updateLightbox();
+            }
+            if (e.key === 'ArrowRight') {
+                lightboxIndex = (lightboxIndex + 1) % galleryImages.length;
+                updateLightbox();
+            }
+        });
+
+        /* ── All photos overlay ───────────────────────── */
+
+        function openAllPhotos() {
+            const grid = document.getElementById('allPhotosGrid');
+            grid.innerHTML = galleryImages.map((url, i) => {
+                const src = sanitizeUrl(url);
+                return src ? `<img src="${src}" alt="Photo ${i + 1}" loading="lazy" onclick="openLightbox(${i})" />` : '';
+            }).join('');
+            document.getElementById('allPhotos').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAllPhotos() {
+            document.getElementById('allPhotos').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('allPhotosClose').addEventListener('click', closeAllPhotos);
+
+        /* ── Render gallery ───────────────────────────── */
+
+        function renderGallery(data) {
+            const root = document.getElementById('root');
+            const images = data.images || [];
+            galleryImages = images.filter(u => sanitizeUrl(u));
+
+            if (!galleryImages.length) {
+                root.innerHTML = '<div id="loading">No photos available</div>';
+                postResize();
+                return;
+            }
+
+            const roomName = escapeHtml(data.room_name || '');
+            const roomType = escapeHtml(data.room_type || '');
+            const photoCount = galleryImages.length;
+
+            const mainSrc = sanitizeUrl(galleryImages[0]);
+            const side1Src = galleryImages.length > 1 ? sanitizeUrl(galleryImages[1]) : '';
+            const side2Src = galleryImages.length > 2 ? sanitizeUrl(galleryImages[2]) : '';
+
+            let html = '';
+
+            // Header
+            html += `<div class="gallery-header">`;
+            html += `  <div>`;
+            html += `    <h1 class="gallery-title">${roomName}</h1>`;
+            if (roomType) html += `    <p class="gallery-subtitle">${roomType}</p>`;
+            html += `  </div>`;
+            html += `</div>`;
+
+            // Grid gallery
+            html += `<div class="show-all-wrap">`;
+            html += `<div class="gallery-grid" id="galleryGrid">`;
+
+            // Main image
+            html += `<div class="gallery-main" onclick="openLightbox(0)">`;
+            html += `  <img src="${mainSrc}" alt="${roomName}" loading="eager" />`;
+            html += `</div>`;
+
+            // Side images
+            if (side1Src) {
+                html += `<div class="gallery-side-item" onclick="openLightbox(1)">`;
+                html += `  <img src="${side1Src}" alt="Photo 2" loading="lazy" />`;
+                html += `</div>`;
+            }
+
+            if (side2Src) {
+                html += `<div class="gallery-side-item" onclick="openLightbox(2)">`;
+                html += `  <img src="${side2Src}" alt="Photo 3" loading="lazy" />`;
+                html += `</div>`;
+            }
+
+            html += `</div>`; // gallery-grid
+
+            // Show all button (only if more than 3 photos)
+            if (photoCount > 3) {
+                html += `<button class="show-all-btn" onclick="openAllPhotos()">Show all ${photoCount} photos</button>`;
+            }
+
+            html += `</div>`; // show-all-wrap
+
+            // Count
+            html += `<p class="photo-count">${photoCount} photo${photoCount !== 1 ? 's' : ''}</p>`;
+
+            root.innerHTML = html;
+            document.getElementById('allPhotosTitle').textContent = `${data.room_name || 'All photos'} — ${photoCount} photos`;
+            postResize();
+        }
+
+        /* ── Hydration (same pattern as other widgets) ── */
+
+        function tryHydrate() {
+            if (hydrated) return;
+
+            let data = null;
+
+            // Try openai.toolOutput
+            if (window.openai && window.openai.toolOutput) {
+                const output = window.openai.toolOutput;
+                data = output?.structuredContent || output?.result?.structuredContent || output;
+            }
+
+            if (!data) return;
+
+            hydrated = true;
+            if (hydrationTimeoutId) clearTimeout(hydrationTimeoutId);
+            if (hydrationPollId) clearInterval(hydrationPollId);
+
+            renderGallery(data);
+        }
+
+        // Listen for postMessage hydration
+        window.addEventListener('message', (e) => {
+            if (hydrated) return;
+            const msg = e.data;
+            if (!msg || typeof msg !== 'object') return;
+
+            let data = null;
+            if (msg.type === 'hydrate' && msg.data) {
+                data = msg.data.structuredContent || msg.data;
+            } else if (msg.structuredContent) {
+                data = msg.structuredContent;
+            }
+
+            if (data && Array.isArray(data.images)) {
+                hydrated = true;
+                if (hydrationTimeoutId) clearTimeout(hydrationTimeoutId);
+                if (hydrationPollId) clearInterval(hydrationPollId);
+                renderGallery(data);
+            }
+        });
+
+        // Poll for openai.toolOutput
+        hydrationPollId = setInterval(tryHydrate, 200);
+
+        // Timeout
+        hydrationTimeoutId = setTimeout(() => {
+            if (hydrationPollId) clearInterval(hydrationPollId);
+            if (!hydrated) {
+                tryHydrate();
+                if (!hydrated) {
+                    document.getElementById('loading').textContent = 'Gallery data unavailable. Please try again.';
+                }
+            }
+        }, 15000);
+
+        // Initial attempt
+        tryHydrate();
+    </script>
+</body>
+
+</html>
