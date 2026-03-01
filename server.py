@@ -733,6 +733,32 @@ def book_confirm(
     }
 
 
+# ── Ping endpoint ──────────────────────────────────────────────────────────
+
+from fastapi import Response
+
+
+@app.get("/ping")
+def ping_get():
+    """Health-check endpoint."""
+    return {"status": "ok"}
+
+
+@app.head("/ping")
+def ping_head():
+    """Health-check endpoint (HEAD)."""
+    return Response(status_code=200)
+
+
+@app.options("/ping")
+def ping_options():
+    """Health-check endpoint (OPTIONS) – returns allowed methods."""
+    return Response(
+        status_code=200,
+        headers={"Allow": "GET, HEAD, OPTIONS"},
+    )
+
+
 # ── Entry point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
