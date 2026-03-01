@@ -735,28 +735,30 @@ def book_confirm(
 
 # ── Ping endpoint ──────────────────────────────────────────────────────────
 
-from fastapi import Response
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response as StarletteResponse
+from starlette.routing import Route
 
 
-@app.get("/ping")
-def ping_get():
-    """Health-check endpoint."""
-    return {"status": "ok"}
+async def ping_get(request: Request):
+    """Health-check endpoint (GET)."""
+    return JSONResponse({"status": "ok"})
 
 
-@app.head("/ping")
-def ping_head():
+async def ping_head(request: Request):
     """Health-check endpoint (HEAD)."""
-    return Response(status_code=200)
+    return StarletteResponse(status_code=200)
 
 
-@app.options("/ping")
-def ping_options():
+async def ping_options(request: Request):
     """Health-check endpoint (OPTIONS) – returns allowed methods."""
-    return Response(
+    return StarletteResponse(
         status_code=200,
         headers={"Allow": "GET, HEAD, OPTIONS"},
     )
+
+
+app.routes.insert(0, Route("/ping", endpoint=ping_get, methods=["GET", "HEAD", "OPTIONS"]))
 
 
 # ── Entry point ────────────────────────────────────────────────────────────
