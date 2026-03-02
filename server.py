@@ -223,7 +223,17 @@ def _log_rag_query(
         logger.warning("Failed to persist rag_query_logs: %s", exc)
 
 
-def _resolve_property_id(property_id: str, question: str) -> str:
+def _resolve_property_id(property_id: str, room_id: str, question: str) -> str:
+    normalized_room_id = str(room_id or "").strip()
+    if normalized_room_id:
+        room = fetch_one(
+            "SELECT property_id FROM rooms WHERE id = %s LIMIT 1",
+            [normalized_room_id],
+        )
+        if not room or not room.get("property_id"):
+            raise ValueError("room_id not found")
+        return str(room["property_id"])
+
     normalized_property_id = str(property_id or "").strip()
     if normalized_property_id:
         return normalized_property_id
@@ -239,7 +249,7 @@ def _resolve_property_id(property_id: str, question: str) -> str:
     if len(rows) == 1:
         return str(rows[0]["id"])
 
-    raise ValueError("property_id is required for search_knowledge.")
+    raise ValueError("Either property_id or room_id is required for search_knowledge.")
 
 
 def _build_monosend_payload(
@@ -811,13 +821,18 @@ def search_rooms(
 def search_knowledge(
     question: str,
     property_id: str = "",
+    room_id: str = "",
     language: str = "",
 ) -> dict:
     """Answer guest questions from indexed property knowledge files (RAG).
-    Requires property_id directly, or include a UUID in the question text."""
+    Requires property_id or room_id. If room_id is provided, property_id is resolved from room."""
     started_at = perf_counter()
     normalized_question = str(question or "").strip()
-    normalized_property_id = _resolve_property_id(property_id, normalized_question)
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    normalized_property_id = _resolve_property_id(
+        normalized_property_input, normalized_room_id, normalized_question
+    )
     normalized_language = str(language or "").strip().lower() or None
 
     if not normalized_question:
@@ -852,7 +867,10 @@ def search_knowledge(
                 property_id=normalized_property_id,
                 request_payload={
                     "question": normalized_question,
+                    "room_id": normalized_room_id or None,
                     "language": normalized_language,
+                    "property_id_input": normalized_property_input or None,
+                    "property_id_resolved": normalized_property_id,
                     "chunks_used_count": 0,
                     "chunks_used": [],
                 },
@@ -906,7 +924,10 @@ def search_knowledge(
             property_id=normalized_property_id,
             request_payload={
                 "question": normalized_question,
+                "room_id": normalized_room_id or None,
                 "language": normalized_language,
+                "property_id_input": normalized_property_input or None,
+                "property_id_resolved": normalized_property_id,
                 "chunks_used_count": len(sources),
                 "chunks_used": [source["id"] for source in sources],
             },
@@ -944,7 +965,10 @@ def search_knowledge(
             property_id=normalized_property_id,
             request_payload={
                 "question": normalized_question,
+                "room_id": normalized_room_id or None,
                 "language": normalized_language,
+                "property_id_input": normalized_property_input or None,
+                "property_id_resolved": normalized_property_id,
             },
             response_payload={"error": error_message},
         )
