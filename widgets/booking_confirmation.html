@@ -91,6 +91,7 @@
     .hero-badge-row {
       display: flex;
       justify-content: flex-end;
+      width: 100%;
     }
 
     .hero-title {
@@ -130,6 +131,8 @@
       box-shadow: var(--shadow-soft);
       font-weight: 800;
       white-space: nowrap;
+      position: relative;
+      z-index: 1;
     }
 
     .status-pill .dot {
@@ -385,6 +388,17 @@
     @media (max-width: 860px) {
       .hero-title h1 {
         max-width: 100%;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .hero-inner {
+        inset: 12px;
+      }
+
+      .status-pill {
+        padding: 8px 10px;
+        font-size: 14px;
       }
     }
 
