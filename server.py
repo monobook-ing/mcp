@@ -57,6 +57,36 @@ MONOSEND_API_KEY = os.getenv("API_KEY", "mono_bYguadb30GKyZ49gv0MxnJdgzG2xpHupQN
 MONOSEND_TIMEOUT_SECONDS = 10
 
 
+def log_tool_call(
+    tool_name: str,
+    description: str,
+    status: str = "success",
+    source: str = "chatgpt",
+    property_id: str | None = None,
+    request_payload: dict | None = None,
+    response_payload: dict | None = None,
+) -> None:
+    """Persist an audit_log row for every tool invocation. Fire-and-forget."""
+    try:
+        execute(
+            """INSERT INTO audit_log
+               (property_id, source, tool_name, description, status,
+                request_payload, response_payload)
+               VALUES (%s, %s::audit_source_type, %s, %s, %s::audit_entry_status, %s::jsonb, %s::jsonb)""",
+            [
+                property_id,
+                source,
+                tool_name,
+                description,
+                status,
+                json.dumps(request_payload) if request_payload else None,
+                json.dumps(response_payload) if response_payload else None,
+            ],
+        )
+    except Exception as e:
+        logger.warning("Failed to log tool call: %s", e)
+
+
 def _build_monosend_payload(
     *,
     guest_email: str,
@@ -248,6 +278,21 @@ def search_hotels(
         f"{where}"
     )
     hotels = fetch_all(sql, params or None)
+
+    first_hotel = hotels[0] if hotels else {}
+    log_tool_call(
+        "search_hotels",
+        f"Searched hotels: name={hotel_name!r} city={city!r} country={country!r}",
+        property_id=str(first_hotel["id"]) if first_hotel else None,
+        request_payload={
+            "hotel_name": hotel_name,
+            "city": city,
+            "country": country,
+            "lat": lat,
+            "lng": lng,
+        },
+        response_payload={"count": len(hotels)},
+    )
 
     return {
         "hotels": hotels,
@@ -516,6 +561,22 @@ def search_rooms(
         "relaxed_country_filter": relaxed_country_filter,
     }
 
+    first_unit = units[0] if units else {}
+    log_tool_call(
+        "search_rooms",
+        f"Searched rooms: query={query!r} city={city!r}",
+        property_id=str(first_unit.get("property_id")) if first_unit.get("property_id") else None,
+        request_payload={
+            "hotel_name": hotel_name,
+            "city": city,
+            "country": country,
+            "query": query,
+            "check_in": check_in,
+            "check_out": check_out,
+        },
+        response_payload={"count": len(units)},
+    )
+
     return {
         "content": [
             {
@@ -633,6 +694,21 @@ def book(
         "image_url": unit["images"][0] if unit.get("images") else "",
         "rating": unit["properties"]["rating"],
     }
+
+    log_tool_call(
+        "book",
+        f"Opened booking form: {unit['name']}",
+        property_id=str(unit["property_id"]),
+        request_payload={
+            "unit_id": unit_id,
+            "unit_name": unit_name,
+            "hotel_name": hotel_name,
+            "check_in": check_in.isoformat(),
+            "check_out": check_out.isoformat(),
+            "guests": guests,
+        },
+        response_payload={"unit_id": str(unit["id"]), "nights": nights, "total": total},
+    )
 
     return {
         "content": [
@@ -760,6 +836,21 @@ def book_confirm(
             "confirmed", True, "chatgpt"
         ]
     )
+
+    log_tool_call(
+        "book_confirm",
+        f"Booking confirmed: {confirmation_code} for {guest_name}",
+        property_id=str(property_id),
+        request_payload={
+            "unit_id": unit_id,
+            "check_in": check_in.isoformat(),
+            "check_out": check_out.isoformat(),
+            "guests": guests,
+            "guest_email": guest_email,
+        },
+        response_payload={"confirmation_code": confirmation_code, "total_price": total_price},
+    )
+
     structured = {
         "confirmation_code": confirmation_code,
         "status": "confirmed",
@@ -895,6 +986,14 @@ def room_gallery(
             "country": accommodation.get("country"),
         },
     }
+
+    log_tool_call(
+        "room_gallery",
+        f"Viewed gallery: {unit.get('name', '')}",
+        property_id=str(unit["property_id"]),
+        request_payload={"room_id": room_id, "room_name": room_name},
+        response_payload={"image_count": len(images)},
+    )
 
     return {
         "content": [

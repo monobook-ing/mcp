@@ -78,11 +78,39 @@ CREATE TABLE bookings (
     currency_code TEXT DEFAULT 'USD'
 );
 
+-- Audit log enums
+DO $$ BEGIN
+  CREATE TYPE audit_source_type AS ENUM ('mcp','chatgpt','claude','gemini','widget');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE audit_entry_status AS ENUM ('success','error','pending');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Audit log
+CREATE TABLE IF NOT EXISTS audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    conversation_id TEXT,
+    source audit_source_type NOT NULL,
+    tool_name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status audit_entry_status NOT NULL DEFAULT 'success',
+    request_payload JSONB,
+    response_payload JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Indexes
 CREATE INDEX idx_rooms_property ON rooms(property_id);
 CREATE INDEX idx_bookings_room ON bookings(room_id);
 CREATE INDEX idx_bookings_guest ON bookings(guest_id);
 CREATE INDEX idx_properties_city ON properties(city);
+CREATE INDEX IF NOT EXISTS idx_audit_log_property ON audit_log(property_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_source ON audit_log(source);
 
 -- ============================================================
 -- Seed Data
