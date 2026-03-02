@@ -307,6 +307,20 @@ def search_hotels(
 
 # ── Tool 2: search_rooms ──────────────────────────────────────────────────
 
+def _get_occupied_room_ids(room_ids: list[str], check_in_str: str, check_out_str: str) -> set[str]:
+    if not room_ids:
+        return set()
+    placeholders = ", ".join(["%s"] * len(room_ids))
+    sql = f"""
+        SELECT DISTINCT room_id FROM bookings
+        WHERE room_id IN ({placeholders})
+          AND status != 'cancelled'
+          AND check_in < %s AND check_out > %s
+    """
+    rows = fetch_all(sql, room_ids + [check_out_str, check_in_str])
+    return {str(r["room_id"]) for r in rows}
+
+
 @mcp.tool(
     annotations={"readOnlyHint": True, "openWorldHint": False},
     app={"resourceUri": UNIT_CARD_WIDGET_URI},
@@ -326,12 +340,14 @@ def search_rooms(
     query: str = "",
     check_in: str = "",
     check_out: str = "",
+    show_occupied: bool = False,
 ) -> dict:
     """Search available rooms/units by hotel name, city, country, type, price,
     guest capacity, amenities like 'Hot tub', 'Sauna', 'Pool', or free-text query.
     Query matches unit name/description/type, hotel name, city/state/country, and amenities.
     Returns interactive room cards with Reserve button.
-    Use check_in/check_out in YYYY-MM-DD format if dates are known."""
+    Use check_in/check_out in YYYY-MM-DD format if dates are known.
+    By default only available rooms returned. Set show_occupied=True to include occupied rooms."""
 
     normalized_query = " ".join(re.split(r"\s+", str(query or "").strip().lower()))
     normalized_amenity = " ".join(re.split(r"\s+", str(amenity or "").strip().lower()))
@@ -442,6 +458,13 @@ def search_rooms(
         if relaxed_units:
             units = relaxed_units
             relaxed_country_filter = True
+
+    if not show_occupied and units:
+        today = date.today().isoformat()
+        eff_in = check_in if check_in else today
+        eff_out = check_out if check_out else (date.today() + timedelta(days=1)).isoformat()
+        occupied = _get_occupied_room_ids([str(u["id"]) for u in units], eff_in, eff_out)
+        units = [u for u in units if str(u["id"]) not in occupied]
 
     def parse_rating(value):
         try:
@@ -578,6 +601,7 @@ def search_rooms(
             "query": query,
             "check_in": check_in,
             "check_out": check_out,
+            "show_occupied": show_occupied,
         },
         response_payload={"count": len(units)},
     )
