@@ -397,6 +397,13 @@ def search_rooms(
             return False
         return True
 
+    def unit_matches_amenity_filter(unit: dict) -> bool:
+        if not normalized_amenity:
+            return True
+        amenities_list = normalize_amenities(unit.get("amenities"))
+        amenities_blob = normalize_text(" ".join(amenities_list))
+        return normalized_amenity in amenities_blob
+
     def _row_to_unit(row):
         """Convert a flat SQL row into the nested dict structure expected downstream."""
         d = dict(row)
@@ -448,12 +455,18 @@ def search_rooms(
         rows = fetch_all(sql, params or None)
         return [_row_to_unit(r) for r in rows]
 
-    units = [u for u in run_room_query(include_country=True) if unit_matches_text_filters(u)]
+    sql_results = run_room_query(include_country=True)
+    units = [u for u in sql_results if unit_matches_text_filters(u)]
+    if not units and sql_results and normalized_query:
+        units = [u for u in sql_results if unit_matches_amenity_filter(u)]
     relaxed_country_filter = False
 
     # If city+country yields nothing, retry city-only for region ambiguities
     if not units and city and country:
-        relaxed_units = [u for u in run_room_query(include_country=False) if unit_matches_text_filters(u)]
+        relaxed_sql = run_room_query(include_country=False)
+        relaxed_units = [u for u in relaxed_sql if unit_matches_text_filters(u)]
+        if not relaxed_units and relaxed_sql and normalized_query:
+            relaxed_units = [u for u in relaxed_sql if unit_matches_amenity_filter(u)]
         if relaxed_units:
             units = relaxed_units
             relaxed_country_filter = True
@@ -756,6 +769,21 @@ def book(
 
 # ── Tool 4: book_confirm ─────────────────────────────────────────────────
 
+def _sanitize(value: str) -> str:
+    """Strip common prompt-injection patterns from user-provided text fields."""
+    text = str(value or "")
+    patterns = [
+        r"(?is)```.*?```",
+        r"(?is)<\s*(script|style)[^>]*>.*?<\s*/\s*\1\s*>",
+        r"(?i)\bignore\s+(all\s+)?(previous|prior)\s+instructions?\b",
+        r"(?i)\b(system|developer|assistant)\s*:\s*",
+        r"(?i)\b(prompt\s+injection|jailbreak)\b",
+    ]
+    for pattern in patterns:
+        text = re.sub(pattern, " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
 @mcp.tool(
     annotations={
         "title": "Confirm booking (widget submit only)",
@@ -821,6 +849,42 @@ def book_confirm(
         )
 
     property_id = unit["property_id"]
+
+    # a) Date validation
+    today = date.today()
+    if check_in < today:
+        raise ValueError("Check-in date cannot be in the past.")
+    if check_out <= check_in:
+        raise ValueError("Check-out date must be after check-in date.")
+    nights = (check_out - check_in).days
+    if nights > 30:
+        raise ValueError("Maximum stay is 30 nights.")
+    if check_in > (today + timedelta(days=365)):
+        raise ValueError("Check-in date cannot be more than 1 year in advance.")
+
+    # b) Guest count validation
+    if guests < 1 or guests > 20:
+        raise ValueError("Guests must be between 1 and 20.")
+    unit_capacity = int(unit.get("max_guests") or 0)
+    if unit_capacity > 0 and guests > unit_capacity:
+        raise ValueError(f"Guest count exceeds room capacity ({unit_capacity}).")
+
+    # c) Room availability validation
+    occupied = _get_occupied_room_ids([str(unit["id"])], check_in.isoformat(), check_out.isoformat())
+    if str(unit["id"]) in occupied:
+        raise ValueError("Room is not available for the selected dates.")
+
+    # d) Price validation
+    expected_total = float(unit["price_per_night"]) * nights
+    if abs(float(total_price) - expected_total) > 0.01:
+        raise ValueError(
+            f"Total price mismatch: expected {expected_total:.2f}, got {float(total_price):.2f}."
+        )
+
+    # e) Input sanitization
+    guest_name = _sanitize(guest_name)
+    guest_email = _sanitize(guest_email)
+    guest_phone = _sanitize(guest_phone)
 
     # Upsert guest
     existing_data = fetch_one(

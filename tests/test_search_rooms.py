@@ -60,6 +60,7 @@ def make_unit(
 
 class SearchRoomsTests(unittest.TestCase):
     def run_search(self, responses, **kwargs):
+        kwargs.setdefault("show_occupied", True)
         with patch.object(server, "fetch_all", side_effect=fake_fetch_all(list(responses))):
             return server.search_rooms(**kwargs)
 
@@ -124,6 +125,62 @@ class SearchRoomsTests(unittest.TestCase):
         self.assertIn("structuredContent", result)
         self.assertEqual(result["structuredContent"]["count"], 1)
         self.assertIn("units", result["structuredContent"])
+
+    def test_cyrillic_query_falls_back_to_sql_results(self):
+        first = make_unit(unit_id="u1", unit_type="Cottage")
+        second = make_unit(unit_id="u2", unit_type="Cottage")
+        result = self.run_search(
+            responses=[[first, second]],
+            city="Волосянка",
+            country="Ukraine",
+            unit_type="cottage",
+            query="котедж",
+            show_occupied=True,
+        )
+        self.assertEqual(result["structuredContent"]["count"], 2)
+
+    def test_cyrillic_query_with_amenity_still_filters(self):
+        with_hot_tub = make_unit(unit_id="u1", unit_type="Cottage", amenities=["Wifi", "Hot tub"])
+        no_hot_tub = make_unit(unit_id="u2", unit_type="Cottage", amenities=["Wifi"])
+        result = self.run_search(
+            responses=[[with_hot_tub, no_hot_tub]],
+            city="Волосянка",
+            country="Ukraine",
+            unit_type="cottage",
+            query="котедж",
+            amenity="hot tub",
+            show_occupied=True,
+        )
+        units = result["structuredContent"]["units"]
+        self.assertEqual(len(units), 1)
+        self.assertEqual(units[0]["id"], "u1")
+
+    def test_latin_query_still_filters_normally(self):
+        cottage = make_unit(unit_id="u1", unit_type="Cottage", name="Forest Cottage")
+        apartment = make_unit(unit_id="u2", unit_type="Apartment", name="City Apartment")
+        result = self.run_search(
+            responses=[[cottage, apartment]],
+            city="Volosianka",
+            country="Ukraine",
+            query="cottage",
+            show_occupied=True,
+        )
+        units = result["structuredContent"]["units"]
+        self.assertEqual(len(units), 1)
+        self.assertEqual(units[0]["id"], "u1")
+
+    def test_cyrillic_query_relaxed_country_fallback(self):
+        relaxed_match = make_unit(unit_id="u1", unit_type="Cottage", country="Ukraine")
+        result = self.run_search(
+            responses=[[], [relaxed_match]],
+            city="Волосянка",
+            country="Poland",
+            unit_type="cottage",
+            query="котедж",
+            show_occupied=True,
+        )
+        self.assertEqual(result["structuredContent"]["count"], 1)
+        self.assertTrue(result["structuredContent"]["relaxed_country_filter"])
 
 
 if __name__ == "__main__":
