@@ -397,6 +397,13 @@ def search_rooms(
             return False
         return True
 
+    def unit_matches_amenity_filter(unit: dict) -> bool:
+        if not normalized_amenity:
+            return True
+        amenities_list = normalize_amenities(unit.get("amenities"))
+        amenities_blob = normalize_text(" ".join(amenities_list))
+        return normalized_amenity in amenities_blob
+
     def _row_to_unit(row):
         """Convert a flat SQL row into the nested dict structure expected downstream."""
         d = dict(row)
@@ -448,12 +455,18 @@ def search_rooms(
         rows = fetch_all(sql, params or None)
         return [_row_to_unit(r) for r in rows]
 
-    units = [u for u in run_room_query(include_country=True) if unit_matches_text_filters(u)]
+    sql_results = run_room_query(include_country=True)
+    units = [u for u in sql_results if unit_matches_text_filters(u)]
+    if not units and sql_results and normalized_query:
+        units = [u for u in sql_results if unit_matches_amenity_filter(u)]
     relaxed_country_filter = False
 
     # If city+country yields nothing, retry city-only for region ambiguities
     if not units and city and country:
-        relaxed_units = [u for u in run_room_query(include_country=False) if unit_matches_text_filters(u)]
+        relaxed_sql = run_room_query(include_country=False)
+        relaxed_units = [u for u in relaxed_sql if unit_matches_text_filters(u)]
+        if not relaxed_units and relaxed_sql and normalized_query:
+            relaxed_units = [u for u in relaxed_sql if unit_matches_amenity_filter(u)]
         if relaxed_units:
             units = relaxed_units
             relaxed_country_filter = True
