@@ -3,10 +3,11 @@ import re
 import uuid
 import json
 import logging
+from time import perf_counter
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from urllib import request, error
 
 from dotenv import load_dotenv
@@ -22,6 +23,11 @@ load_dotenv()
 from fastmcp import FastMCP
 
 from db import fetch_all, fetch_one, execute, execute_returning
+
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover - environment-dependent
+    OpenAI = None  # type: ignore[assignment]
 
 # ── Server ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +60,7 @@ UNIT_CARD_WIDGET_URI = "ui://widget/unit-card.html"
 BOOKING_FORM_WIDGET_URI = "ui://widget/booking-form.html"
 BOOKING_CONFIRMATION_WIDGET_URI = "ui://widget/booking-confirmation.html"
 ROOM_GALLERY_WIDGET_URI = "ui://widget/room-gallery.html"
+KNOWLEDGE_ANSWER_WIDGET_URI = "ui://widget/knowledge-answer.html"
 
 MONOSEND_EMAILS_URL = "https://api.monosend.io/emails"
 MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
@@ -90,6 +97,149 @@ def log_tool_call(
         )
     except Exception as e:
         logger.warning("Failed to log tool call: %s", e)
+
+
+@lru_cache(maxsize=1)
+def _get_openai_client() -> Any:
+    if OpenAI is None:
+        raise RuntimeError("OpenAI client unavailable. Install openai>=1.60.0")
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+    return OpenAI(api_key=api_key)
+
+
+def _embed_query(text: str) -> list[float]:
+    client = _get_openai_client()
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text,
+    )
+    return list(response.data[0].embedding)
+
+
+def _search_chunks(
+    property_id: str,
+    embedding: list[float],
+    language: str | None = None,
+    limit: int = 8,
+) -> list[dict]:
+    query_vector = "[" + ",".join(f"{value:.8f}" for value in embedding) + "]"
+    sql = """
+        SELECT
+          e.id,
+          e.source_id AS file_id,
+          e.chunk_index,
+          e.content,
+          e.metadata,
+          (1 - (e.embedding <=> %s::vector))::float AS similarity
+        FROM embeddings e
+        WHERE e.property_id = %s::uuid
+          AND e.source_type = 'knowledge_chunk'
+          AND (%s::text IS NULL OR COALESCE(e.metadata->>'language', '') = %s::text)
+          AND (1 - (e.embedding <=> %s::vector)) > 0.5
+        ORDER BY e.embedding <=> %s::vector
+        LIMIT %s
+    """
+    rows = fetch_all(
+        sql,
+        [
+            query_vector,
+            property_id,
+            language,
+            language,
+            query_vector,
+            query_vector,
+            limit,
+        ],
+    )
+    return rows
+
+
+def _build_rag_answer(question: str, chunks: list[dict]) -> str:
+    client = _get_openai_client()
+    context_lines = []
+    for index, chunk in enumerate(chunks, start=1):
+        metadata = chunk.get("metadata") or {}
+        context_lines.append(
+            "\n".join(
+                [
+                    f"[Source {index}]",
+                    f"file_name: {metadata.get('file_name', 'Unknown')}",
+                    f"doc_type: {metadata.get('doc_type', 'general')}",
+                    f"section: {metadata.get('section', 'General')}",
+                    f"content: {str(chunk.get('content') or '')[:1400]}",
+                ]
+            )
+        )
+
+    system_prompt = (
+        "You are a hotel concierge assistant. "
+        "Answer only with information from the provided sources. "
+        "If the answer is not in the sources, say that you do not have enough information."
+    )
+    user_prompt = (
+        "Use the context below to answer the user question.\n\n"
+        f"{'\n'.join(context_lines)}\n\n"
+        f"Question: {question}"
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.3,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
+def _log_rag_query(
+    property_id: str,
+    question: str,
+    answer: str,
+    chunks_used: list[dict],
+    language: str | None,
+    latency_ms: int,
+) -> None:
+    try:
+        execute(
+            """INSERT INTO rag_query_logs
+               (property_id, question, answer, chunks_used, source, language, latency_ms)
+               VALUES (%s::uuid, %s, %s, %s::jsonb, %s, %s, %s)""",
+            [
+                property_id,
+                question,
+                answer,
+                json.dumps(chunks_used),
+                "chatgpt",
+                language or "en",
+                latency_ms,
+            ],
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist rag_query_logs: %s", exc)
+
+
+def _resolve_property_id(property_id: str, question: str) -> str:
+    normalized_property_id = str(property_id or "").strip()
+    if normalized_property_id:
+        return normalized_property_id
+
+    match = re.search(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+        str(question or ""),
+    )
+    if match:
+        return match.group(0)
+
+    rows = fetch_all("SELECT id FROM properties ORDER BY created_at DESC LIMIT 2")
+    if len(rows) == 1:
+        return str(rows[0]["id"])
+
+    raise ValueError("property_id is required for search_knowledge.")
 
 
 def _build_monosend_payload(
@@ -240,6 +390,20 @@ def booking_confirmation_resource() -> str:
 )
 def room_gallery_resource() -> str:
     return load_widget("room_gallery")
+
+
+@mcp.resource(
+    uri=KNOWLEDGE_ANSWER_WIDGET_URI,
+    name="Knowledge Answer Widget",
+    description="Displays grounded RAG answer with source citations and expandable chunks",
+    mime_type=RESOURCE_MIME,
+    meta={
+        "openai/widgetDescription": "Grounded answer card with source citations from property knowledge documents.",
+        "openai/widgetPrefersBorder": False,
+    },
+)
+def knowledge_answer_resource() -> str:
+    return load_widget("knowledge_answer")
 
 
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
@@ -634,7 +798,160 @@ def search_rooms(
     }
 
 
-# ── Tool 3: book ──────────────────────────────────────────────────────────
+# ── Tool 3: search_knowledge ───────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def search_knowledge(
+    question: str,
+    property_id: str = "",
+    language: str = "",
+) -> dict:
+    """Answer guest questions from indexed property knowledge files (RAG).
+    Requires property_id directly, or include a UUID in the question text."""
+    started_at = perf_counter()
+    normalized_question = str(question or "").strip()
+    normalized_property_id = _resolve_property_id(property_id, normalized_question)
+    normalized_language = str(language or "").strip().lower() or None
+
+    if not normalized_question:
+        raise ValueError("question is required.")
+
+    try:
+        query_embedding = _embed_query(normalized_question)
+        chunks = _search_chunks(
+            property_id=normalized_property_id,
+            embedding=query_embedding,
+            language=normalized_language,
+            limit=8,
+        )
+
+        if not chunks:
+            answer = (
+                "I couldn't find that in the uploaded knowledge documents. "
+                "Please ask the property owner to upload or update the relevant policy."
+            )
+            latency_ms = int((perf_counter() - started_at) * 1000)
+            _log_rag_query(
+                property_id=normalized_property_id,
+                question=normalized_question,
+                answer=answer,
+                chunks_used=[],
+                language=normalized_language,
+                latency_ms=latency_ms,
+            )
+            log_tool_call(
+                "search_knowledge",
+                "No matching knowledge chunks found.",
+                property_id=normalized_property_id,
+                request_payload={
+                    "question": normalized_question,
+                    "language": normalized_language,
+                    "chunks_used_count": 0,
+                    "chunks_used": [],
+                },
+                response_payload={"answer": answer, "chunks_used": []},
+            )
+            return {
+                "content": [{"type": "text", "text": answer}],
+                "structuredContent": {
+                    "question": normalized_question,
+                    "answer": answer,
+                    "sources": [],
+                },
+                "_meta": {
+                    "ui": {"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+                    "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+                    "openai/widgetAccessible": True,
+                },
+            }
+
+        answer = _build_rag_answer(normalized_question, chunks)
+        sources = []
+        for chunk in chunks:
+            metadata = chunk.get("metadata") or {}
+            sources.append(
+                {
+                    "id": str(chunk.get("id")),
+                    "file_id": str(chunk.get("file_id") or ""),
+                    "file_name": metadata.get("file_name") or "Unknown",
+                    "doc_type": metadata.get("doc_type") or "general",
+                    "section": metadata.get("section") or "General",
+                    "language": metadata.get("language") or "en",
+                    "chunk_index": chunk.get("chunk_index"),
+                    "similarity": chunk.get("similarity"),
+                    "chunk_text": chunk.get("content") or "",
+                }
+            )
+
+        latency_ms = int((perf_counter() - started_at) * 1000)
+        _log_rag_query(
+            property_id=normalized_property_id,
+            question=normalized_question,
+            answer=answer,
+            chunks_used=sources,
+            language=normalized_language,
+            latency_ms=latency_ms,
+        )
+
+        log_tool_call(
+            "search_knowledge",
+            f"Answered knowledge query using {len(sources)} chunk(s).",
+            property_id=normalized_property_id,
+            request_payload={
+                "question": normalized_question,
+                "language": normalized_language,
+                "chunks_used_count": len(sources),
+                "chunks_used": [source["id"] for source in sources],
+            },
+            response_payload={"answer": answer, "chunks_used": sources},
+        )
+
+        return {
+            "content": [{"type": "text", "text": answer}],
+            "structuredContent": {
+                "question": normalized_question,
+                "answer": answer,
+                "sources": sources,
+            },
+            "_meta": {
+                "ui": {"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+                "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+                "openai/widgetAccessible": True,
+            },
+        }
+    except Exception as exc:
+        latency_ms = int((perf_counter() - started_at) * 1000)
+        error_message = str(exc)
+        _log_rag_query(
+            property_id=normalized_property_id,
+            question=normalized_question,
+            answer=f"ERROR: {error_message}",
+            chunks_used=[],
+            language=normalized_language,
+            latency_ms=latency_ms,
+        )
+        log_tool_call(
+            "search_knowledge",
+            f"Knowledge query failed: {error_message}",
+            status="error",
+            property_id=normalized_property_id,
+            request_payload={
+                "question": normalized_question,
+                "language": normalized_language,
+            },
+            response_payload={"error": error_message},
+        )
+        raise
+
+
+# ── Tool 4: book ──────────────────────────────────────────────────────────
 
 @mcp.tool(
     annotations={
@@ -767,7 +1084,7 @@ def book(
     }
 
 
-# ── Tool 4: book_confirm ─────────────────────────────────────────────────
+# ── Tool 5: book_confirm ─────────────────────────────────────────────────
 
 def _sanitize(value: str) -> str:
     """Strip common prompt-injection patterns from user-provided text fields."""
@@ -1005,7 +1322,7 @@ def book_confirm(
     }
 
 
-# ── Tool 5: room_gallery ─────────────────────────────────────────────────
+# ── Tool 6: room_gallery ─────────────────────────────────────────────────
 
 @mcp.tool(
     annotations={"readOnlyHint": True, "openWorldHint": False},
