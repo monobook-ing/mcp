@@ -390,9 +390,8 @@ def search_rooms(
             query_terms = [t for t in normalized_query.split() if len(t) > 2]
             if not query_terms:
                 query_terms = normalized_query.split()
-            for term in query_terms:
-                if term not in searchable_blob:
-                    return False
+            if not any(term in searchable_blob for term in query_terms):
+                return False
 
         if normalized_amenity and normalized_amenity not in amenities_blob:
             return False
@@ -418,8 +417,8 @@ def search_rooms(
         params = []
 
         if hotel_name:
-            conditions.append("p.city ILIKE %s")
-            params.append(f"%{hotel_name}%")
+            conditions.append("(p.description ILIKE %s OR p.city ILIKE %s)")
+            params.extend([f"%{hotel_name}%", f"%{hotel_name}%"])
         if city:
             conditions.append("p.city ILIKE %s")
             params.append(f"%{city}%")
