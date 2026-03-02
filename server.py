@@ -226,23 +226,27 @@ def search_hotels(
     params = []
 
     if hotel_name:
-        conditions.append("name ILIKE %s")
+        conditions.append("a.name ILIKE %s")
         params.append(f"%{hotel_name}%")
     if city:
-        conditions.append("city ILIKE %s")
+        conditions.append("p.city ILIKE %s")
         params.append(f"%{city}%")
     if country:
-        conditions.append("country ILIKE %s")
+        conditions.append("p.country ILIKE %s")
         params.append(f"%{country}%")
     if lat is not None and lng is not None:
         delta = 0.5
-        conditions.append("lat >= %s AND lat <= %s")
+        conditions.append("p.lat >= %s AND p.lat <= %s")
         params.extend([lat - delta, lat + delta])
-        conditions.append("lng >= %s AND lng <= %s")
+        conditions.append("p.lng >= %s AND p.lng <= %s")
         params.extend([lng - delta, lng + delta])
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-    sql = f"SELECT * FROM properties {where}"
+    sql = (
+        "SELECT p.*, a.name AS account_name "
+        "FROM properties p JOIN accounts a ON p.account_id = a.id "
+        f"{where}"
+    )
     hotels = fetch_all(sql, params or None)
 
     return {
