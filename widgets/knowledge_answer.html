@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Answer</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #0f766e;
+      --accent-soft: rgba(15, 118, 110, 0.09);
+      --radius: 16px;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    #root {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .answer-label {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .answer-text {
+      margin: 0;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .sources-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .sources {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .source-button {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease;
+    }
+
+    .source-button:hover {
+      border-color: #d1d5db;
+      background: #fafafa;
+    }
+
+    .source-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .source-name {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(15, 118, 110, 0.2);
+    }
+
+    .source-chunk {
+      display: none;
+      margin-top: 8px;
+      padding: 10px;
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 10px;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .source-item.open .source-chunk {
+      display: block;
+    }
+
+    #loading {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <main id="root">
+    <div id="loading">Loading answer…</div>
+  </main>
+
+  <script>
+    const root = document.getElementById("root");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function isStructuredKnowledgePayload(data) {
+      return !!data &&
+        typeof data === "object" &&
+        typeof data.answer === "string" &&
+        Array.isArray(data.sources);
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+      if (raw && typeof raw === "object") {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredKnowledgePayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function render(payload) {
+      const answer = payload.answer || "No answer available.";
+      const sourceItems = Array.isArray(payload.sources) ? payload.sources : [];
+
+      const sourcesMarkup = sourceItems.length
+        ? sourceItems.map((source, index) => {
+          return `
+              <div class="source-item" data-index="${index}">
+                <button type="button" class="source-button">
+                  <div class="source-top">
+                    <p class="source-name">${escapeHtml(source.file_name || "Unknown source")}</p>
+                    <span class="badge">Source ${index + 1}</span>
+                  </div>
+                  <div class="meta">
+                    <span class="badge">${escapeHtml(source.doc_type || "general")}</span>
+                    <span class="badge">${escapeHtml(source.section || "General")}</span>
+                  </div>
+                </button>
+                <div class="source-chunk">${escapeHtml(source.chunk_text || "")}</div>
+              </div>
+            `;
+        }).join("")
+        : `<div class="card"><p class="answer-text">No source chunks were found.</p></div>`;
+
+      root.innerHTML = `
+          <section class="card">
+            <p class="answer-label">AI Answer</p>
+            <p class="answer-text">${escapeHtml(answer)}</p>
+          </section>
+          <section class="card">
+            <p class="sources-title">Sources</p>
+            <div class="sources">${sourcesMarkup}</div>
+          </section>
+        `;
+
+      root.querySelectorAll(".source-item .source-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const sourceItem = button.closest(".source-item");
+          if (!sourceItem) return;
+          sourceItem.classList.toggle("open");
+        });
+      });
+    }
+
+    function hydrate(raw) {
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+      render(payload);
+      return true;
+    }
+
+    function probeHydrationSources() {
+      if (window.openai && hydrate(window.openai.toolOutput)) return true;
+      if (window.openai && typeof window.openai.getToolResult === "function") {
+        Promise.resolve(window.openai.getToolResult())
+          .then(hydrate)
+          .catch(() => { });
+      }
+      return false;
+    }
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== "object") return;
+      if (msg.jsonrpc !== "2.0" || msg.method !== "ui/notifications/tool-result") return;
+      hydrate(msg);
+    });
+
+    if (!probeHydrationSources()) {
+      setTimeout(() => {
+        if (!normalizeToolPayload(window.openai?.toolOutput)) {
+          root.innerHTML = `<div id="loading">Unable to load knowledge answer.</div>`;
+        }
+      }, 5000);
+    }
+  </script>
+</body>
+
+</html>
