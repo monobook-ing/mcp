@@ -12,6 +12,11 @@ from urllib import request, error
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
+
 load_dotenv()
 
 from fastmcp import FastMCP
