@@ -144,7 +144,7 @@
     .exp-card__bottom{
       display:flex;
       align-items:center;
-      justify-content:space-between;
+      justify-content:flex-end;
       background: rgba(255,255,255,.85);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -152,24 +152,32 @@
       border-radius: 0 0 var(--card-radius) var(--card-radius);
     }
 
-    .exp-card__brand{
-      font-size:11px;
-      font-weight:800;
-      letter-spacing:.7px;
-      text-transform:uppercase;
-      color: #555;
-    }
-
     .exp-card__cta{
-      font-size:14px;
-      font-weight:800;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height:44px;
+      min-width:156px;
+      padding:0 24px;
+      font-size:15px;
+      font-weight:900;
       color: var(--btnText);
       text-decoration:none;
+      white-space: nowrap;
+      border: 1px solid rgba(17, 24, 39, .14);
+      border-radius:999px;
+      background: rgba(255,255,255,.94);
+      box-shadow: var(--shadowSoft);
+      letter-spacing: -.2px;
       cursor:pointer;
-      transition: opacity .15s;
+      transition: transform .15s, opacity .15s;
     }
     .exp-card__cta:hover{
       opacity:.7;
+      transform: translateY(-1px);
+    }
+    .exp-card__cta:active{
+      transform: translateY(0);
     }
 
     /* ── Responsive ──────────────────────────────── */
@@ -186,11 +194,11 @@
       .exp-card__bottom{
         padding: 10px 14px;
       }
-      .exp-card__brand{
-        font-size:10px;
-      }
       .exp-card__cta{
-        font-size:12px;
+        height:40px;
+        min-width:142px;
+        padding:0 20px;
+        font-size:14px;
       }
     }
   </style>
@@ -208,8 +216,7 @@
           <span class="exp-card__badge badge--best-rated">Best Rated</span>
         </div>
         <div class="exp-card__bottom">
-          <span class="exp-card__brand">Aloha Spot Box</span>
-          <a class="exp-card__cta" href="#">Book now</a>
+          <a class="exp-card__cta" href="#">Directions</a>
         </div>
       </div>
     </article>
@@ -223,8 +230,7 @@
           <span class="exp-card__badge badge--premium">Premium</span>
         </div>
         <div class="exp-card__bottom">
-          <span class="exp-card__brand">Aloha Spot Box</span>
-          <a class="exp-card__cta" href="#">Book now</a>
+          <a class="exp-card__cta" href="#">Directions</a>
         </div>
       </div>
       <span class="exp-card__badge badge--new" style="position:absolute;top:22px;right:20px;z-index:4;">New</span>
@@ -238,8 +244,7 @@
           <h2 class="exp-card__title">98 Beach</h2>
         </div>
         <div class="exp-card__bottom">
-          <span class="exp-card__brand">Aloha Spot Box</span>
-          <a class="exp-card__cta" href="#">Book now</a>
+          <a class="exp-card__cta" href="#">Directions</a>
         </div>
       </div>
       <span class="exp-card__badge badge--new" style="position:absolute;top:22px;right:20px;z-index:4;">New</span>
@@ -253,8 +258,7 @@
           <h2 class="exp-card__title">Allo</h2>
         </div>
         <div class="exp-card__bottom">
-          <span class="exp-card__brand">Aloha Spot Box</span>
-          <a class="exp-card__cta" href="#">Book now</a>
+          <a class="exp-card__cta" href="#">Directions</a>
         </div>
       </div>
     </article>
