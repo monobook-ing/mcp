@@ -5,7 +5,7 @@ import json
 import logging
 import math
 from time import perf_counter
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
@@ -63,6 +63,7 @@ BOOKING_FORM_WIDGET_URI = "ui://widget/booking-form.html"
 BOOKING_CONFIRMATION_WIDGET_URI = "ui://widget/booking-confirmation.html"
 ROOM_GALLERY_WIDGET_URI = "ui://widget/room-gallery.html"
 KNOWLEDGE_ANSWER_WIDGET_URI = "ui://widget/knowledge-answer.html"
+SERVICES_CARD_WIDGET_URI = "ui://widget/services-card.html"
 
 MONOSEND_EMAILS_URL = "https://api.monosend.io/emails"
 MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
@@ -758,6 +759,20 @@ def knowledge_answer_resource() -> str:
 )
 def experiences_card_resource() -> str:
     return load_widget("experiences_card")
+
+
+@mcp.resource(
+    uri=SERVICES_CARD_WIDGET_URI,
+    name="Services Card Widget",
+    description="Displays property services/add-ons as cards with pricing, availability, and booking action",
+    mime_type=RESOURCE_MIME,
+    meta={
+        "openai/widgetDescription": "Interactive service cards for browsing and booking property services and add-ons.",
+        "openai/widgetPrefersBorder": False,
+    },
+)
+def services_card_resource() -> str:
+    return load_widget("services_card")
 
 
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
@@ -1929,6 +1944,1299 @@ def search_nearby_places(
             "openai/widgetAccessible": True,
         },
     }
+
+
+# ── Services helpers ────────────────────────────────────────────────────────
+
+def _looks_like_uuid(value: str) -> bool:
+    normalized = str(value or "").strip()
+    return (
+        len(normalized) == 36
+        and normalized.count("-") == 4
+        and all(ch in "0123456789abcdef-" for ch in normalized.lower())
+    )
+
+
+def _normalize_currency_code(value: Any) -> str:
+    return str(value or "USD").strip().upper() or "USD"
+
+
+def _fetch_currency_display_map(codes: list[str]) -> dict[str, str]:
+    unique_codes = sorted(
+        {
+            _normalize_currency_code(code)
+            for code in codes
+            if str(code or "").strip()
+        }
+    )
+    if not unique_codes:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(unique_codes))
+    rows = fetch_all(
+        f"SELECT code, display FROM currencies WHERE code IN ({placeholders})",
+        unique_codes,
+    )
+    return {
+        _normalize_currency_code(row.get("code")): str(row.get("display") or "")
+        for row in rows
+    }
+
+
+def _normalize_slot_time_key(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if "T" in raw:
+        raw = raw.split("T", 1)[-1]
+    if "+" in raw:
+        raw = raw.split("+", 1)[0]
+    if "." in raw:
+        raw = raw.split(".", 1)[0]
+    pieces = raw.split(":")
+    if len(pieces) >= 2:
+        return f"{pieces[0].zfill(2)}:{pieces[1].zfill(2)}"
+    return raw
+
+
+def _service_is_slot_based(service: dict[str, Any]) -> bool:
+    capacity_mode = str(service.get("capacity_mode") or "").lower()
+    availability_type = str(service.get("availability_type") or "").lower()
+    return capacity_mode == "per_hour_limit" or availability_type == "time_slot"
+
+
+def _service_public_and_active(service: dict[str, Any]) -> bool:
+    status = str(service.get("status") or "").lower()
+    visibility = str(service.get("visibility") or "").lower()
+    return status == "active" and visibility == "public"
+
+
+def _as_service_slot(row: dict[str, Any]) -> dict[str, Any]:
+    capacity = _to_int_or_none(row.get("capacity")) or 0
+    booked = _to_int_or_none(row.get("booked")) or 0
+    slot_time = _normalize_slot_time_key(row.get("slot_time"))
+    return {
+        "id": row.get("id"),
+        "service_id": row.get("service_id"),
+        "time": slot_time,
+        "slot_time": slot_time,
+        "capacity": capacity,
+        "booked": booked,
+        "sort_order": _to_int_or_none(row.get("sort_order")) or 0,
+    }
+
+
+def _load_service_slots_for_ids(service_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    if not service_ids:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(service_ids))
+    rows = fetch_all(
+        f"""
+        SELECT id, service_id, slot_time, capacity, booked, sort_order
+        FROM service_time_slots
+        WHERE service_id IN ({placeholders})
+        ORDER BY service_id, sort_order ASC, slot_time ASC
+        """,
+        service_ids,
+    )
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        service_id = str(row.get("service_id"))
+        grouped.setdefault(service_id, []).append(_as_service_slot(row))
+    return grouped
+
+
+def _normalize_service_record(
+    row: dict[str, Any],
+    slots_by_service_id: dict[str, list[dict[str, Any]]],
+    currency_map: dict[str, str],
+) -> dict[str, Any]:
+    service_id = str(row.get("id"))
+    image_urls_raw = row.get("image_urls")
+    if isinstance(image_urls_raw, (list, tuple)):
+        image_urls = [str(item) for item in image_urls_raw if item]
+    else:
+        image_urls = [str(image_urls_raw)] if image_urls_raw else []
+
+    currency_code = _normalize_currency_code(row.get("currency_code"))
+    currency_display = (
+        str(row.get("currency_display") or "").strip()
+        or currency_map.get(currency_code)
+        or currency_code
+    )
+    slots = slots_by_service_id.get(service_id, [])
+    slot_based = _service_is_slot_based(row) and bool(slots)
+    has_available_slots = any(
+        (_to_int_or_none(slot.get("capacity")) or 0) > (_to_int_or_none(slot.get("booked")) or 0)
+        for slot in slots
+    )
+
+    return {
+        "id": service_id,
+        "property_id": str(row.get("property_id") or ""),
+        "account_id": row.get("account_id"),
+        "category_id": row.get("category_id"),
+        "category_name": row.get("category_name"),
+        "partner_id": row.get("partner_id"),
+        "partner_name": row.get("partner_name"),
+        "slug": row.get("slug"),
+        "name": row.get("name"),
+        "short_description": row.get("short_description") or "",
+        "full_description": row.get("full_description") or "",
+        "image_urls": image_urls,
+        "type": row.get("type") or "internal",
+        "status": row.get("status") or "draft",
+        "visibility": row.get("visibility") or "public",
+        "pricing_type": row.get("pricing_type") or "fixed",
+        "price": _to_float_or_none(row.get("price")) or 0.0,
+        "currency_code": currency_code,
+        "currency_display": currency_display,
+        "vat_percent": _to_float_or_none(row.get("vat_percent")) or 0.0,
+        "availability_type": row.get("availability_type") or "always",
+        "capacity_mode": row.get("capacity_mode") or "unlimited",
+        "capacity_limit": _to_int_or_none(row.get("capacity_limit")),
+        "available_before_booking": bool(row.get("available_before_booking", True)),
+        "available_during_booking": bool(row.get("available_during_booking", True)),
+        "post_booking_upsell": bool(row.get("post_booking_upsell", False)),
+        "knowledge_language": row.get("knowledge_language") or "en",
+        "slots": slots,
+        "slot_based": slot_based,
+        "has_available_slots": has_available_slots,
+    }
+
+
+def _fetch_services_for_property(
+    property_id: str,
+    category: str = "",
+    search: str = "",
+) -> list[dict[str, Any]]:
+    normalized_category = str(category or "").strip()
+    normalized_search = str(search or "").strip()
+
+    sql = """
+        SELECT
+          s.*,
+          sc.name AS category_name,
+          sp.name AS partner_name,
+          c.display AS currency_display
+        FROM services s
+        LEFT JOIN service_categories sc ON sc.id = s.category_id
+        LEFT JOIN service_partners sp ON sp.id = s.partner_id
+        LEFT JOIN currencies c ON c.code = s.currency_code
+        WHERE s.property_id = %s::uuid
+          AND s.status = 'active'
+          AND s.visibility = 'public'
+    """
+    params: list[Any] = [property_id]
+
+    if normalized_category:
+        if _looks_like_uuid(normalized_category):
+            sql += " AND s.category_id = %s::uuid"
+            params.append(normalized_category)
+        else:
+            sql += " AND sc.name ILIKE %s"
+            params.append(f"%{normalized_category}%")
+
+    if normalized_search:
+        sql += " AND (s.name ILIKE %s OR s.short_description ILIKE %s)"
+        search_term = f"%{normalized_search}%"
+        params.extend([search_term, search_term])
+
+    sql += " ORDER BY s.created_at DESC, s.name ASC"
+    rows = fetch_all(sql, params)
+
+    service_ids = [str(row.get("id")) for row in rows if row.get("id")]
+    slots_by_service = _load_service_slots_for_ids(service_ids)
+    currency_map = _fetch_currency_display_map([str(row.get("currency_code") or "") for row in rows])
+    return [
+        _normalize_service_record(row, slots_by_service, currency_map)
+        for row in rows
+    ]
+
+
+def _fetch_service_for_property(
+    property_id: str,
+    service_id: str,
+    *,
+    require_public_active: bool = True,
+) -> dict[str, Any] | None:
+    sql = """
+        SELECT
+          s.*,
+          sc.name AS category_name,
+          sp.name AS partner_name,
+          c.display AS currency_display
+        FROM services s
+        LEFT JOIN service_categories sc ON sc.id = s.category_id
+        LEFT JOIN service_partners sp ON sp.id = s.partner_id
+        LEFT JOIN currencies c ON c.code = s.currency_code
+        WHERE s.id = %s::uuid
+          AND s.property_id = %s::uuid
+    """
+    params: list[Any] = [service_id, property_id]
+    if require_public_active:
+        sql += " AND s.status = 'active' AND s.visibility = 'public'"
+    sql += " LIMIT 1"
+    row = fetch_one(sql, params)
+    if not row:
+        return None
+
+    slots_by_service = _load_service_slots_for_ids([str(row.get("id"))])
+    currency_map = _fetch_currency_display_map([str(row.get("currency_code") or "")])
+    return _normalize_service_record(row, slots_by_service, currency_map)
+
+
+def _evaluate_service_availability(
+    *,
+    property_id: str,
+    service: dict[str, Any],
+    service_date: str,
+    quantity: int = 1,
+    slot_time: str = "",
+) -> dict[str, Any]:
+    service_id = str(service.get("id") or "")
+    capacity_mode = str(service.get("capacity_mode") or "unlimited").lower()
+    slots = service.get("slots") if isinstance(service.get("slots"), list) else []
+    is_slot_based = _service_is_slot_based(service) and bool(slots)
+    normalized_slot_key = _normalize_slot_time_key(slot_time)
+    safe_quantity = max(1, int(quantity or 1))
+
+    slot_summaries: list[dict[str, Any]] = []
+    for slot in slots:
+        slot_capacity = _to_int_or_none(slot.get("capacity")) or 0
+        slot_booked = _to_int_or_none(slot.get("booked")) or 0
+        slot_remaining = max(slot_capacity - slot_booked, 0)
+        slot_summaries.append(
+            {
+                **slot,
+                "remaining": slot_remaining,
+                "available": slot_capacity > 0 and (slot_booked + safe_quantity <= slot_capacity),
+            }
+        )
+
+    availability: dict[str, Any] = {
+        "available": True,
+        "service_id": service_id,
+        "service_name": service.get("name"),
+        "service_date": service_date,
+        "quantity": safe_quantity,
+        "capacity_mode": capacity_mode,
+        "slots": slot_summaries,
+    }
+
+    if is_slot_based:
+        selected_slot: dict[str, Any] | None = None
+        if normalized_slot_key:
+            for slot in slot_summaries:
+                if _normalize_slot_time_key(slot.get("time")) == normalized_slot_key:
+                    selected_slot = slot
+                    break
+        else:
+            for slot in slot_summaries:
+                if slot.get("available"):
+                    selected_slot = slot
+                    break
+
+        if not selected_slot:
+            availability.update(
+                {
+                    "available": False,
+                    "remaining": 0,
+                    "error": "No available slot for the selected service.",
+                }
+            )
+            return availability
+
+        selected_capacity = _to_int_or_none(selected_slot.get("capacity")) or 0
+        selected_booked = _to_int_or_none(selected_slot.get("booked")) or 0
+        selected_remaining = max(selected_capacity - selected_booked, 0)
+        slot_is_available = selected_capacity > 0 and (
+            selected_booked + safe_quantity <= selected_capacity
+        )
+        availability.update(
+            {
+                "available": slot_is_available,
+                "remaining": selected_remaining,
+                "slot_id": selected_slot.get("id"),
+                "slot_time": selected_slot.get("time"),
+                "slot_capacity": selected_capacity,
+                "slot_booked": selected_booked,
+            }
+        )
+        if not slot_is_available:
+            availability["error"] = "Requested quantity exceeds slot capacity."
+        return availability
+
+    if capacity_mode == "unlimited":
+        availability["remaining"] = None
+        return availability
+
+    if capacity_mode in {"limited_quantity", "per_day_limit", "per_hour_limit"}:
+        capacity_limit = _to_int_or_none(service.get("capacity_limit")) or 0
+        availability["capacity_limit"] = capacity_limit
+        if capacity_limit <= 0:
+            availability.update(
+                {
+                    "available": False,
+                    "remaining": 0,
+                    "error": "Service capacity_limit is not configured.",
+                }
+            )
+            return availability
+
+        sql = """
+            SELECT COALESCE(SUM(quantity), 0) AS booked_quantity
+            FROM service_bookings
+            WHERE property_id = %s::uuid
+              AND service_id = %s::uuid
+              AND status != 'cancelled'
+        """
+        params: list[Any] = [property_id, service_id]
+        if capacity_mode in {"per_day_limit", "per_hour_limit"}:
+            sql += " AND service_date = %s::date"
+            params.append(service_date)
+
+        booked_row = fetch_one(sql, params) or {}
+        booked_quantity = _to_int_or_none(booked_row.get("booked_quantity")) or 0
+        remaining = max(capacity_limit - booked_quantity, 0)
+        available = booked_quantity + safe_quantity <= capacity_limit
+        availability.update(
+            {
+                "booked_quantity": booked_quantity,
+                "remaining": remaining,
+                "available": available,
+            }
+        )
+        if not available:
+            availability["error"] = "Requested quantity exceeds remaining capacity."
+        return availability
+
+    availability["remaining"] = None
+    return availability
+
+
+def _coerce_to_date(value: Any) -> date:
+    if isinstance(value, date):
+        return value
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("Date value is required.")
+    return date.fromisoformat(raw.split("T", 1)[0])
+
+
+def _calculate_service_total(
+    *,
+    property_id: str,
+    service: dict[str, Any],
+    quantity: int,
+    booking_id: str = "",
+) -> dict[str, Any]:
+    pricing_type = str(service.get("pricing_type") or "fixed").lower()
+    unit_price = _to_float_or_none(service.get("price")) or 0.0
+    multiplier = max(1, int(quantity or 1))
+
+    normalized_booking_id = str(booking_id or "").strip()
+    if pricing_type == "per_night" and normalized_booking_id:
+        booking_row = fetch_one(
+            """
+            SELECT check_in, check_out
+            FROM bookings
+            WHERE id = %s::uuid
+              AND property_id = %s::uuid
+            LIMIT 1
+            """,
+            [normalized_booking_id, property_id],
+        )
+        if not booking_row:
+            raise ValueError("booking_id not found for this property.")
+        check_in = _coerce_to_date(booking_row.get("check_in"))
+        check_out = _coerce_to_date(booking_row.get("check_out"))
+        nights = (check_out - check_in).days
+        if nights <= 0:
+            raise ValueError("booking_id has invalid stay dates.")
+        multiplier = nights * max(1, int(quantity or 1))
+
+    total = round(unit_price * multiplier, 2)
+    return {
+        "pricing_type": pricing_type,
+        "unit_price": unit_price,
+        "multiplier": multiplier,
+        "total": total,
+    }
+
+
+def _get_property_team_emails(property_id: str) -> tuple[list[str], str]:
+    property_row = fetch_one(
+        """
+        SELECT
+          p.account_id,
+          COALESCE(
+            NULLIF(TRIM(p.description), ''),
+            NULLIF(TRIM(a.name), ''),
+            NULLIF(TRIM(p.city), ''),
+            'Property'
+          ) AS property_name
+        FROM properties p
+        JOIN accounts a ON a.id = p.account_id
+        WHERE p.id = %s::uuid
+        LIMIT 1
+        """,
+        [property_id],
+    )
+    if not property_row:
+        return ([], "Property")
+
+    account_id = property_row.get("account_id")
+    property_name = str(property_row.get("property_name") or "Property")
+    if not account_id:
+        return ([], property_name)
+
+    rows = fetch_all(
+        """
+        SELECT DISTINCT u.email
+        FROM team_members tm
+        JOIN users u ON u.id = tm.user_id
+        WHERE tm.account_id = %s::uuid
+          AND tm.status = 'accepted'
+          AND tm.deleted_at IS NULL
+          AND u.email IS NOT NULL
+          AND TRIM(u.email) != ''
+        """,
+        [account_id],
+    )
+    emails = sorted(
+        {
+            str(row.get("email") or "").strip()
+            for row in rows
+            if str(row.get("email") or "").strip()
+        }
+    )
+    return (emails, property_name)
+
+
+def _send_service_booking_notification_email(
+    *,
+    recipient_emails: list[str],
+    service_name: str,
+    guest_name: str,
+    service_date: str,
+    quantity: int,
+    total: float,
+    currency_code: str,
+    external_ref: str,
+    property_name: str,
+) -> None:
+    cleaned_recipients = sorted(
+        {
+            str(email).strip()
+            for email in recipient_emails
+            if str(email).strip()
+        }
+    )
+    if not cleaned_recipients:
+        return
+
+    total_display = f"{float(total):.2f} {_normalize_currency_code(currency_code)}"
+    subject = f"New service booking: {service_name}"
+    text_body = "\n".join(
+        [
+            "A new service booking was created.",
+            "",
+            f"Property: {property_name}",
+            f"Service: {service_name}",
+            f"Guest: {guest_name}",
+            f"Date: {service_date}",
+            f"Quantity: {quantity}",
+            f"Total: {total_display}",
+            f"Reference: {external_ref}",
+        ]
+    )
+    html_body = (
+        "<p>A new service booking was created.</p>"
+        f"<p><strong>Property:</strong> {property_name}<br/>"
+        f"<strong>Service:</strong> {service_name}<br/>"
+        f"<strong>Guest:</strong> {guest_name}<br/>"
+        f"<strong>Date:</strong> {service_date}<br/>"
+        f"<strong>Quantity:</strong> {quantity}<br/>"
+        f"<strong>Total:</strong> {total_display}<br/>"
+        f"<strong>Reference:</strong> {external_ref}</p>"
+    )
+
+    payload = {
+        "to": cleaned_recipients,
+        "from": MONOSEND_FROM_EMAIL,
+        "subject": subject,
+        "text": text_body,
+        "html": html_body,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        MONOSEND_EMAILS_URL,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {MONOSEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with request.urlopen(req, timeout=MONOSEND_TIMEOUT_SECONDS) as resp:
+            status = getattr(resp, "status", resp.getcode())
+            response_body = resp.read().decode("utf-8", errors="replace")
+            if status < 200 or status >= 300:
+                raise RuntimeError(
+                    f"Monosend returned HTTP {status}: {response_body[:500]}"
+                )
+    except error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Monosend returned HTTP {exc.code}: {err_body[:500]}"
+        ) from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Monosend request failed: {exc}") from exc
+
+
+def _service_widget_meta() -> dict[str, Any]:
+    return {
+        "ui": {"resourceUri": SERVICES_CARD_WIDGET_URI},
+        "openai/outputTemplate": SERVICES_CARD_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    }
+
+
+# ── Tool 8: list_services ───────────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": SERVICES_CARD_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": SERVICES_CARD_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def list_services(
+    property_id: str = "",
+    room_id: str = "",
+    category: str = "",
+    search: str = "",
+) -> dict:
+    """List active public services for a property with optional category/search filters."""
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    normalized_category = str(category or "").strip()
+    normalized_search = str(search or "").strip()
+
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for list_services.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+
+    services = _fetch_services_for_property(
+        property_id=resolved_property_id,
+        category=normalized_category,
+        search=normalized_search,
+    )
+    structured = {
+        "property_id": resolved_property_id,
+        "services": services,
+        "count": len(services),
+    }
+
+    log_tool_call(
+        "list_services",
+        f"Listed services (count={len(services)}).",
+        property_id=resolved_property_id,
+        request_payload={
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
+            "property_id_resolved": resolved_property_id,
+            "category": normalized_category or None,
+            "search": normalized_search or None,
+        },
+        response_payload={"count": len(services)},
+    )
+
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": f"Loaded {len(services)} service(s).",
+            }
+        ],
+        "structuredContent": structured,
+        "_meta": _service_widget_meta(),
+    }
+
+
+# ── Tool 9: get_service_details ─────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": SERVICES_CARD_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": SERVICES_CARD_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def get_service_details(
+    service_id: str,
+    property_id: str = "",
+    room_id: str = "",
+) -> dict:
+    """Get details for one active/public service, including slots and partner/category metadata."""
+    normalized_service_id = str(service_id or "").strip()
+    if not normalized_service_id:
+        raise ValueError("service_id is required.")
+    if not _looks_like_uuid(normalized_service_id):
+        raise ValueError("service_id must be a UUID.")
+
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for get_service_details.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+
+    service = _fetch_service_for_property(
+        property_id=resolved_property_id,
+        service_id=normalized_service_id,
+        require_public_active=True,
+    )
+    if not service:
+        raise ValueError("Service not found.")
+
+    structured = {
+        "property_id": resolved_property_id,
+        "service": service,
+    }
+
+    log_tool_call(
+        "get_service_details",
+        f"Loaded service details for {normalized_service_id}.",
+        property_id=resolved_property_id,
+        request_payload={
+            "service_id": normalized_service_id,
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
+            "property_id_resolved": resolved_property_id,
+        },
+        response_payload={"found": True},
+    )
+
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": f"Loaded details for {service.get('name') or 'service'}.",
+            }
+        ],
+        "structuredContent": structured,
+        "_meta": _service_widget_meta(),
+    }
+
+
+# ── Tool 10: check_service_availability ─────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+)
+def check_service_availability(
+    service_id: str,
+    service_date: str = "",
+    slot_time: str = "",
+    property_id: str = "",
+    room_id: str = "",
+) -> dict:
+    """Check service availability for a date and optional slot."""
+    normalized_service_id = str(service_id or "").strip()
+    if not normalized_service_id:
+        raise ValueError("service_id is required.")
+    if not _looks_like_uuid(normalized_service_id):
+        raise ValueError("service_id must be a UUID.")
+
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for check_service_availability.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+
+    normalized_service_date = str(service_date or "").strip() or date.today().isoformat()
+    try:
+        normalized_service_date = date.fromisoformat(normalized_service_date).isoformat()
+    except ValueError as exc:
+        raise ValueError("service_date must be in YYYY-MM-DD format.") from exc
+
+    service = _fetch_service_for_property(
+        property_id=resolved_property_id,
+        service_id=normalized_service_id,
+        require_public_active=True,
+    )
+    if not service:
+        raise ValueError("Service not found.")
+    if not _service_public_and_active(service):
+        raise ValueError("Service is not active and public.")
+
+    availability = _evaluate_service_availability(
+        property_id=resolved_property_id,
+        service=service,
+        service_date=normalized_service_date,
+        quantity=1,
+        slot_time=slot_time,
+    )
+    result = {
+        "available": bool(availability.get("available")),
+        "remaining": availability.get("remaining"),
+        "service_name": service.get("name"),
+        "service_id": normalized_service_id,
+        "service_date": normalized_service_date,
+        "slot_time": availability.get("slot_time") or _normalize_slot_time_key(slot_time),
+        "capacity_mode": availability.get("capacity_mode"),
+        "slots": availability.get("slots", []),
+    }
+    if availability.get("error"):
+        result["error"] = availability["error"]
+
+    log_tool_call(
+        "check_service_availability",
+        (
+            f"Checked availability for {normalized_service_id}: "
+            f"{'available' if result['available'] else 'unavailable'}"
+        ),
+        property_id=resolved_property_id,
+        request_payload={
+            "service_id": normalized_service_id,
+            "service_date": normalized_service_date,
+            "slot_time": _normalize_slot_time_key(slot_time) or None,
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
+            "property_id_resolved": resolved_property_id,
+        },
+        response_payload={
+            "available": result["available"],
+            "remaining": result.get("remaining"),
+            "slot_time": result.get("slot_time"),
+        },
+    )
+
+    return result
+
+
+# ── Tool 11: book_service ───────────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    },
+    app={"resourceUri": SERVICES_CARD_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": SERVICES_CARD_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def book_service(
+    service_id: str,
+    guest_name: str,
+    service_date: str,
+    quantity: int = 1,
+    guest_email: str = "",
+    slot_time: str = "",
+    booking_id: str = "",
+    property_id: str = "",
+    room_id: str = "",
+) -> dict:
+    """Book a service atomically after checking availability and capacity."""
+    normalized_service_id = str(service_id or "").strip()
+    if not normalized_service_id:
+        raise ValueError("service_id is required.")
+    if not _looks_like_uuid(normalized_service_id):
+        raise ValueError("service_id must be a UUID.")
+
+    cleaned_guest_name = _sanitize(guest_name)
+    if not cleaned_guest_name:
+        raise ValueError("guest_name is required.")
+    cleaned_guest_email = _sanitize(guest_email)
+
+    safe_quantity = int(quantity or 1)
+    if safe_quantity <= 0:
+        raise ValueError("quantity must be greater than 0.")
+
+    normalized_service_date = str(service_date or "").strip()
+    if not normalized_service_date:
+        raise ValueError("service_date is required.")
+    try:
+        normalized_service_date = date.fromisoformat(normalized_service_date).isoformat()
+    except ValueError as exc:
+        raise ValueError("service_date must be in YYYY-MM-DD format.") from exc
+
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for book_service.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+
+    service = _fetch_service_for_property(
+        property_id=resolved_property_id,
+        service_id=normalized_service_id,
+        require_public_active=True,
+    )
+    if not service:
+        raise ValueError("Service not found.")
+    if not _service_public_and_active(service):
+        raise ValueError("Service is not available for booking.")
+
+    availability = _evaluate_service_availability(
+        property_id=resolved_property_id,
+        service=service,
+        service_date=normalized_service_date,
+        quantity=safe_quantity,
+        slot_time=slot_time,
+    )
+    if not availability.get("available"):
+        raise ValueError(str(availability.get("error") or "Service is not available."))
+
+    normalized_booking_id = str(booking_id or "").strip()
+    if normalized_booking_id and not _looks_like_uuid(normalized_booking_id):
+        raise ValueError("booking_id must be a UUID.")
+    pricing = _calculate_service_total(
+        property_id=resolved_property_id,
+        service=service,
+        quantity=safe_quantity,
+        booking_id=normalized_booking_id,
+    )
+    external_ref = f"SB-{uuid.uuid4().hex[:6].upper()}"
+    currency_code = _normalize_currency_code(service.get("currency_code"))
+
+    inserted = execute_returning(
+        """
+        INSERT INTO service_bookings
+          (property_id, service_id, booking_id, external_ref, guest_name, service_date,
+           quantity, total, currency_code, status)
+        VALUES
+          (%s::uuid, %s::uuid, NULLIF(%s, '')::uuid, %s, %s, %s::date,
+           %s, %s, %s, %s::service_booking_status)
+        RETURNING *
+        """,
+        [
+            resolved_property_id,
+            normalized_service_id,
+            normalized_booking_id,
+            external_ref,
+            cleaned_guest_name,
+            normalized_service_date,
+            safe_quantity,
+            pricing["total"],
+            currency_code,
+            "confirmed",
+        ],
+    )
+    if not inserted:
+        raise RuntimeError("Failed to create service booking.")
+
+    selected_slot_id = availability.get("slot_id")
+    selected_slot_time = availability.get("slot_time")
+    if selected_slot_id:
+        execute(
+            """
+            UPDATE service_time_slots
+            SET booked = GREATEST(booked + %s, 0)
+            WHERE id = %s::uuid
+              AND service_id = %s::uuid
+            """,
+            [safe_quantity, selected_slot_id, normalized_service_id],
+        )
+
+    try:
+        recipient_emails, property_name = _get_property_team_emails(resolved_property_id)
+        _send_service_booking_notification_email(
+            recipient_emails=recipient_emails,
+            service_name=str(service.get("name") or "Service"),
+            guest_name=cleaned_guest_name,
+            service_date=normalized_service_date,
+            quantity=safe_quantity,
+            total=float(pricing["total"]),
+            currency_code=currency_code,
+            external_ref=external_ref,
+            property_name=property_name,
+        )
+    except Exception as exc:
+        logger.warning("Failed to send service booking notification email: %s", exc)
+
+    structured = {
+        "service_booking_id": inserted.get("id"),
+        "external_ref": external_ref,
+        "status": inserted.get("status") or "confirmed",
+        "service_id": normalized_service_id,
+        "service_name": service.get("name"),
+        "guest_name": cleaned_guest_name,
+        "guest_email": cleaned_guest_email or None,
+        "service_date": normalized_service_date,
+        "quantity": safe_quantity,
+        "unit_price": pricing["unit_price"],
+        "pricing_type": pricing["pricing_type"],
+        "total": pricing["total"],
+        "currency_code": currency_code,
+        "slot_time": selected_slot_time,
+        "booking_id": normalized_booking_id or None,
+        "property_id": resolved_property_id,
+        "message": f"Service booked successfully. Reference: {external_ref}",
+    }
+
+    log_tool_call(
+        "book_service",
+        f"Booked service {normalized_service_id} for {cleaned_guest_name}.",
+        property_id=resolved_property_id,
+        request_payload={
+            "service_id": normalized_service_id,
+            "service_date": normalized_service_date,
+            "quantity": safe_quantity,
+            "slot_time": _normalize_slot_time_key(slot_time) or None,
+            "booking_id": normalized_booking_id or None,
+            "guest_name": cleaned_guest_name,
+            "guest_email": cleaned_guest_email or None,
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
+            "property_id_resolved": resolved_property_id,
+        },
+        response_payload={
+            "service_booking_id": inserted.get("id"),
+            "external_ref": external_ref,
+            "total": pricing["total"],
+            "slot_time": selected_slot_time,
+        },
+    )
+
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": str(structured["message"]),
+            }
+        ],
+        "structuredContent": structured,
+        "_meta": _service_widget_meta(),
+    }
+
+
+# ── Tool 12: cancel_service_booking ─────────────────────────────────────────
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    },
+)
+def cancel_service_booking(
+    service_booking_id: str,
+    property_id: str = "",
+    room_id: str = "",
+) -> dict:
+    """Cancel an existing service booking and release slot capacity when possible."""
+    normalized_service_booking_id = str(service_booking_id or "").strip()
+    if not normalized_service_booking_id:
+        raise ValueError("service_booking_id is required.")
+    if not _looks_like_uuid(normalized_service_booking_id):
+        raise ValueError("service_booking_id must be a UUID.")
+
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for cancel_service_booking.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+
+    booking = fetch_one(
+        """
+        SELECT *
+        FROM service_bookings
+        WHERE id = %s::uuid
+          AND property_id = %s::uuid
+        LIMIT 1
+        """,
+        [normalized_service_booking_id, resolved_property_id],
+    )
+    if not booking:
+        raise ValueError("Service booking not found.")
+
+    current_status = str(booking.get("status") or "").lower()
+    if current_status == "cancelled":
+        result = {
+            "cancelled": True,
+            "external_ref": booking.get("external_ref"),
+            "service_booking_id": normalized_service_booking_id,
+            "message": "Service booking is already cancelled.",
+        }
+        log_tool_call(
+            "cancel_service_booking",
+            f"Service booking already cancelled: {normalized_service_booking_id}.",
+            property_id=resolved_property_id,
+            request_payload={
+                "service_booking_id": normalized_service_booking_id,
+                "room_id": normalized_room_id or None,
+                "property_id_input": normalized_property_input or None,
+                "property_id_resolved": resolved_property_id,
+            },
+            response_payload=result,
+        )
+        return result
+
+    execute(
+        """
+        UPDATE service_bookings
+        SET status = 'cancelled',
+            updated_at = now()
+        WHERE id = %s::uuid
+          AND property_id = %s::uuid
+        """,
+        [normalized_service_booking_id, resolved_property_id],
+    )
+
+    decremented_slot_time: str | None = None
+    service_id = str(booking.get("service_id") or "")
+    service = _fetch_service_for_property(
+        property_id=resolved_property_id,
+        service_id=service_id,
+        require_public_active=False,
+    )
+    slots = service.get("slots") if service and isinstance(service.get("slots"), list) else []
+    if service and _service_is_slot_based(service) and slots:
+        target_slot = None
+        for slot in slots:
+            if (_to_int_or_none(slot.get("booked")) or 0) > 0:
+                target_slot = slot
+                break
+        if target_slot and target_slot.get("id"):
+            execute(
+                """
+                UPDATE service_time_slots
+                SET booked = GREATEST(booked - %s, 0)
+                WHERE id = %s::uuid
+                  AND service_id = %s::uuid
+                """,
+                [
+                    _to_int_or_none(booking.get("quantity")) or 1,
+                    target_slot.get("id"),
+                    service_id,
+                ],
+            )
+            decremented_slot_time = str(target_slot.get("time") or "")
+
+    result = {
+        "cancelled": True,
+        "external_ref": booking.get("external_ref"),
+        "service_booking_id": normalized_service_booking_id,
+        "decremented_slot_time": decremented_slot_time,
+        "message": "Service booking cancelled successfully.",
+    }
+
+    log_tool_call(
+        "cancel_service_booking",
+        f"Cancelled service booking {normalized_service_booking_id}.",
+        property_id=resolved_property_id,
+        request_payload={
+            "service_booking_id": normalized_service_booking_id,
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
+            "property_id_resolved": resolved_property_id,
+        },
+        response_payload=result,
+    )
+    return result
+
+
+def _is_service_related_chunk(chunk: dict[str, Any]) -> bool:
+    metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
+    searchable_text = " ".join(
+        [
+            str(metadata.get("doc_type") or ""),
+            str(metadata.get("section") or ""),
+            str(metadata.get("file_name") or ""),
+            str(chunk.get("content") or ""),
+        ]
+    ).lower()
+    keywords = (
+        "service",
+        "services",
+        "add-on",
+        "addon",
+        "spa",
+        "wellness",
+        "massage",
+        "tour",
+        "transfer",
+        "concierge",
+    )
+    return any(keyword in searchable_text for keyword in keywords)
+
+
+# ── Tool 13: search_service_kb ──────────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def search_service_kb(
+    question: str,
+    property_id: str = "",
+    room_id: str = "",
+    language: str = "",
+) -> dict:
+    """Answer service-related guest questions from indexed property knowledge chunks."""
+    started_at = perf_counter()
+    normalized_question = str(question or "").strip()
+    if not normalized_question:
+        raise ValueError("question is required.")
+
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for search_service_kb.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
+    normalized_language = str(language or "").strip().lower() or None
+
+    try:
+        query_embedding = _embed_query(normalized_question)
+        chunks = _search_chunks(
+            property_id=resolved_property_id,
+            embedding=query_embedding,
+            language=normalized_language,
+            limit=10,
+        )
+        if not chunks:
+            answer = (
+                "I couldn't find service-related details in the uploaded knowledge files. "
+                "Please ask the property owner to upload service policies or FAQs."
+            )
+            latency_ms = int((perf_counter() - started_at) * 1000)
+            _log_rag_query(
+                property_id=resolved_property_id,
+                question=normalized_question,
+                answer=answer,
+                chunks_used=[],
+                language=normalized_language,
+                latency_ms=latency_ms,
+            )
+            log_tool_call(
+                "search_service_kb",
+                "No service knowledge chunks found.",
+                property_id=resolved_property_id,
+                request_payload={
+                    "question": normalized_question,
+                    "room_id": normalized_room_id or None,
+                    "language": normalized_language,
+                    "property_id_input": normalized_property_input or None,
+                    "property_id_resolved": resolved_property_id,
+                },
+                response_payload={"answer": answer, "chunks_used": []},
+            )
+            return {
+                "content": [{"type": "text", "text": answer}],
+                "structuredContent": {
+                    "property_id": resolved_property_id,
+                    "question": normalized_question,
+                    "answer": answer,
+                    "sources": [],
+                },
+                "_meta": {
+                    "ui": {"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+                    "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+                    "openai/widgetAccessible": True,
+                },
+            }
+
+        service_chunks = [chunk for chunk in chunks if _is_service_related_chunk(chunk)]
+        selected_chunks = (service_chunks or chunks)[:8]
+        answer = _build_rag_answer(normalized_question, selected_chunks)
+
+        sources = []
+        for chunk in selected_chunks:
+            metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
+            sources.append(
+                {
+                    "id": str(chunk.get("id")),
+                    "file_id": str(chunk.get("file_id") or ""),
+                    "file_name": metadata.get("file_name") or "Unknown",
+                    "doc_type": metadata.get("doc_type") or "general",
+                    "section": metadata.get("section") or "General",
+                    "language": metadata.get("language") or "en",
+                    "chunk_index": chunk.get("chunk_index"),
+                    "similarity": chunk.get("similarity"),
+                    "chunk_text": chunk.get("content") or "",
+                }
+            )
+
+        latency_ms = int((perf_counter() - started_at) * 1000)
+        _log_rag_query(
+            property_id=resolved_property_id,
+            question=normalized_question,
+            answer=answer,
+            chunks_used=sources,
+            language=normalized_language,
+            latency_ms=latency_ms,
+        )
+
+        structured = {
+            "property_id": resolved_property_id,
+            "question": normalized_question,
+            "answer": answer,
+            "sources": sources,
+        }
+        log_tool_call(
+            "search_service_kb",
+            f"Answered service knowledge query using {len(sources)} chunk(s).",
+            property_id=resolved_property_id,
+            request_payload={
+                "question": normalized_question,
+                "room_id": normalized_room_id or None,
+                "language": normalized_language,
+                "property_id_input": normalized_property_input or None,
+                "property_id_resolved": resolved_property_id,
+                "service_filtered_chunk_count": len(service_chunks),
+            },
+            response_payload={"answer": answer, "chunks_used_count": len(sources)},
+        )
+        return {
+            "content": [{"type": "text", "text": answer}],
+            "structuredContent": structured,
+            "_meta": {
+                "ui": {"resourceUri": KNOWLEDGE_ANSWER_WIDGET_URI},
+                "openai/outputTemplate": KNOWLEDGE_ANSWER_WIDGET_URI,
+                "openai/widgetAccessible": True,
+            },
+        }
+    except Exception as exc:
+        latency_ms = int((perf_counter() - started_at) * 1000)
+        error_message = str(exc)
+        _log_rag_query(
+            property_id=resolved_property_id,
+            question=normalized_question,
+            answer=f"ERROR: {error_message}",
+            chunks_used=[],
+            language=normalized_language,
+            latency_ms=latency_ms,
+        )
+        log_tool_call(
+            "search_service_kb",
+            f"Service knowledge query failed: {error_message}",
+            status="error",
+            property_id=resolved_property_id,
+            request_payload={
+                "question": normalized_question,
+                "room_id": normalized_room_id or None,
+                "language": normalized_language,
+                "property_id_input": normalized_property_input or None,
+                "property_id_resolved": resolved_property_id,
+            },
+            response_payload={"error": error_message},
+        )
+        raise
 
 
 # ── Ping endpoint ──────────────────────────────────────────────────────────

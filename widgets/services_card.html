@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Services</title>
+  <style>
+    :root {
+      --text: #0b1324;
+      --muted: #5f6b84;
+      --line: rgba(128, 145, 173, 0.25);
+      --card-bg: rgba(255, 255, 255, 0.72);
+      --badge-bg: rgba(255, 255, 255, 0.82);
+      --radius: 20px;
+      --shadow: 0 16px 38px rgba(15, 23, 42, 0.16);
+      --gradient: radial-gradient(circle at 10% 10%, #def8ff 0%, rgba(222, 248, 255, 0) 45%),
+        radial-gradient(circle at 86% 84%, #ffe6cb 0%, rgba(255, 230, 203, 0) 42%),
+        linear-gradient(135deg, #edf3fb 0%, #f9fbff 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      background: transparent;
+    }
+
+    body {
+      font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    #root {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .service-card {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--gradient);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      min-height: 270px;
+      display: grid;
+      grid-template-rows: 136px auto;
+    }
+
+    .service-image-wrap {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .service-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .service-image-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(2, 6, 23, 0.08) 0%, rgba(2, 6, 23, 0.36) 100%);
+    }
+
+    .card-badges {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 2;
+    }
+
+    .badge-stack {
+      display: inline-flex;
+      gap: 6px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--badge-bg);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .badge.price {
+      background: rgba(18, 120, 91, 0.9);
+      color: #f0fdf4;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .badge.partner {
+      background: rgba(30, 64, 175, 0.9);
+      color: #eff6ff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .service-content {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 11px;
+      padding: 12px 12px 14px;
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .service-name {
+      font-size: 18px;
+      line-height: 1.15;
+      font-weight: 900;
+      letter-spacing: -0.2px;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      min-height: 42px;
+    }
+
+    .service-description {
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      min-height: 54px;
+      margin-top: 6px;
+    }
+
+    .service-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .availability {
+      font-size: 12px;
+      font-weight: 800;
+      color: #0f5132;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(220, 252, 231, 0.75);
+      border: 1px solid rgba(22, 163, 74, 0.25);
+      max-width: 58%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .availability.unavailable {
+      color: #7f1d1d;
+      background: rgba(254, 226, 226, 0.75);
+      border-color: rgba(220, 38, 38, 0.28);
+    }
+
+    .cta,
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      min-width: 124px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 24, 39, 0.15);
+      background: rgba(255, 255, 255, 0.96);
+      color: #0f172a;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: -0.1px;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      cursor: pointer;
+      padding: 0 14px;
+    }
+
+    .cta-btn {
+      appearance: none;
+    }
+
+    .cta:hover,
+    .cta-btn:hover {
+      opacity: 0.8;
+      transform: translateY(-1px);
+    }
+
+    .empty {
+      border: 1px solid #d8e1ef;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #59627a;
+      font-size: 14px;
+      padding: 12px;
+      font-weight: 600;
+    }
+
+    #loading {
+      padding: 12px;
+      border: 1px dashed #ccd5e2;
+      border-radius: 12px;
+      color: #59627a;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .retry-btn {
+      margin-top: 8px;
+      border-radius: 999px;
+      border: 1px solid #d0d9e9;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .service-detail {
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--gradient);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      display: grid;
+    }
+
+    .detail-hero {
+      position: relative;
+      min-height: 190px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%);
+    }
+
+    .detail-hero img {
+      width: 100%;
+      height: 100%;
+      min-height: 190px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .detail-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(2, 6, 23, 0.08) 25%, rgba(2, 6, 23, 0.62) 100%);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 16px;
+      gap: 10px;
+    }
+
+    .detail-title {
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: -0.3px;
+      font-weight: 900;
+      color: #f8fafc;
+      text-shadow: 0 8px 24px rgba(15, 23, 42, 0.45);
+      max-width: 70%;
+    }
+
+    .detail-body {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .detail-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .detail-description {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #334155;
+      white-space: pre-wrap;
+    }
+
+    .slots {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .slots-head {
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      color: #334155;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(248, 250, 252, 0.92);
+    }
+
+    .slot-list {
+      list-style: none;
+      display: grid;
+    }
+
+    .slot-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      font-size: 13px;
+      color: #1f2937;
+    }
+
+    .slot-item:last-child {
+      border-bottom: 0;
+    }
+
+    .slot-time {
+      font-weight: 800;
+    }
+
+    .slot-capacity {
+      color: #475569;
+      font-weight: 600;
+    }
+
+    .slot-state {
+      font-weight: 800;
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid rgba(22, 163, 74, 0.3);
+      color: #166534;
+      background: rgba(220, 252, 231, 0.9);
+    }
+
+    .slot-state.full {
+      border-color: rgba(220, 38, 38, 0.3);
+      color: #991b1b;
+      background: rgba(254, 226, 226, 0.9);
+    }
+
+    .detail-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .toast {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 30;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.92);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+      padding: 10px 12px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.28);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 680px) {
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .service-card {
+        min-height: 250px;
+      }
+
+      .service-name {
+        font-size: 17px;
+      }
+
+      .detail-title {
+        font-size: 22px;
+        max-width: 80%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="root">
+    <div id="loading">Loading services...</div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const root = document.getElementById("root");
+    const toastEl = document.getElementById("toast");
+
+    let hydrated = false;
+    let hydrationTimeoutId = null;
+    let hydrationPollId = null;
+    let toastTimer = null;
+
+    const HYDRATION_TIMEOUT_MS = 5000;
+    const HYDRATION_POLL_MS = 250;
+    const HYDRATION_MAX_POLLS = 20;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function isStructuredServicesPayload(data) {
+      return !!data
+        && typeof data === "object"
+        && Array.isArray(data.services);
+    }
+
+    function isStructuredServiceDetailsPayload(data) {
+      return !!data
+        && typeof data === "object"
+        && data.service
+        && typeof data.service === "object";
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === "object") {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result?.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params?.structuredContent);
+        sources.push(raw.params?.result);
+        sources.push(raw.params?.result?.structuredContent);
+      }
+
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output?.structuredContent);
+        sources.push(output?.result);
+        sources.push(output?.result?.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredServiceDetailsPayload(candidate) || isStructuredServicesPayload(candidate)) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    function formatMoney(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return "0";
+      return num % 1 === 0 ? String(num) : num.toFixed(2);
+    }
+
+    function formatPrice(service) {
+      const amount = formatMoney(service?.price);
+      const currencyDisplay = String(service?.currency_display || service?.currency_code || "USD").trim();
+      const pricingType = String(service?.pricing_type || "fixed").toLowerCase();
+      const suffixByType = {
+        fixed: "/session",
+        dynamic: "/session",
+        per_person: "/person",
+        per_night: "/night",
+        per_hour: "/hour",
+      };
+      const suffix = suffixByType[pricingType] || "";
+
+      if (/^[A-Za-z]{3}$/.test(currencyDisplay)) {
+        return `${amount} ${currencyDisplay}${suffix}`;
+      }
+      return `${currencyDisplay}${amount}${suffix}`;
+    }
+
+    function normalizeActionUrl(service) {
+      const url = String(service?.external_url || service?.booking_url || "").trim();
+      return url || "";
+    }
+
+    function slotSummary(service) {
+      const slots = Array.isArray(service?.slots) ? service.slots : [];
+      if (!slots.length) return "Available";
+      let openSlots = 0;
+      for (const slot of slots) {
+        const capacity = Number(slot?.capacity || 0);
+        const booked = Number(slot?.booked || 0);
+        if (capacity > booked) openSlots += 1;
+      }
+      return openSlots > 0 ? `${openSlots} slot(s) open` : "No slots left";
+    }
+
+    function availabilityState(service) {
+      const slots = Array.isArray(service?.slots) ? service.slots : [];
+      if (!slots.length) return { text: "Available", available: true };
+
+      for (const slot of slots) {
+        const capacity = Number(slot?.capacity || 0);
+        const booked = Number(slot?.booked || 0);
+        if (capacity > booked) {
+          return { text: slotSummary(service), available: true };
+        }
+      }
+      return { text: "No slots left", available: false };
+    }
+
+    function showToast(message) {
+      if (!toastEl) return;
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastEl.classList.remove("show");
+      }, 2800);
+    }
+
+    function emitBookIntent(serviceId, serviceName) {
+      if (!serviceId) return;
+      window.parent.postMessage(
+        {
+          type: "widget:event",
+          name: "service-book-intent",
+          data: { service_id: serviceId, service_name: serviceName || "Service" },
+        },
+        "*"
+      );
+      showToast(`Ask the assistant: Book ${serviceName || "this service"} on YYYY-MM-DD for <guest name>.`);
+    }
+
+    function buildCard(service) {
+      const name = escapeHtml(service?.name || "Service");
+      const description = escapeHtml(service?.short_description || service?.full_description || "");
+      const category = escapeHtml(service?.category_name || "General");
+      const price = escapeHtml(formatPrice(service));
+      const imageUrl = String(Array.isArray(service?.image_urls) ? service.image_urls[0] : "").trim();
+      const actionUrl = normalizeActionUrl(service);
+      const isPartner = String(service?.type || "").toLowerCase() === "partner";
+      const availability = availabilityState(service);
+      const availabilityClass = availability.available ? "availability" : "availability unavailable";
+      const imageMarkup = imageUrl
+        ? `<img class="service-image" src="${escapeHtml(imageUrl)}" alt="${name}" loading="lazy" />`
+        : "";
+
+      const ctaMarkup = actionUrl
+        ? `<a class="cta" href="${escapeHtml(actionUrl)}" target="_blank" rel="noopener noreferrer">Book Now</a>`
+        : `<button class="cta-btn js-book-intent" type="button" data-service-id="${escapeHtml(service?.id || "")}" data-service-name="${name}">Book Now</button>`;
+
+      return `
+        <article class="service-card">
+          <div class="service-image-wrap">
+            ${imageMarkup}
+            <div class="card-badges">
+              <div class="badge-stack"><span class="badge price">${price}</span></div>
+              <div class="badge-stack">
+                <span class="badge">${category}</span>
+                ${isPartner ? '<span class="badge partner">Partner</span>' : ""}
+              </div>
+            </div>
+          </div>
+          <div class="service-content">
+            <div>
+              <h3 class="service-name">${name}</h3>
+              <p class="service-description">${description || "Explore this add-on service."}</p>
+            </div>
+            <div class="service-bottom">
+              <span class="${availabilityClass}">${escapeHtml(availability.text)}</span>
+              ${ctaMarkup}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function buildSlotRow(slot) {
+      const slotTime = escapeHtml(slot?.time || slot?.slot_time || "--:--");
+      const capacity = Number(slot?.capacity || 0);
+      const booked = Number(slot?.booked || 0);
+      const remaining = Math.max(capacity - booked, 0);
+      const isOpen = capacity > 0 && remaining > 0;
+
+      return `
+        <li class="slot-item">
+          <span class="slot-time">${slotTime}</span>
+          <span class="slot-capacity">${escapeHtml(String(booked))}/${escapeHtml(String(capacity))} booked</span>
+          <span class="slot-state ${isOpen ? "" : "full"}">${isOpen ? `${remaining} left` : "Full"}</span>
+        </li>
+      `;
+    }
+
+    function renderServiceDetail(service) {
+      const name = escapeHtml(service?.name || "Service");
+      const fullDescription = escapeHtml(service?.full_description || service?.short_description || "No details provided.");
+      const price = escapeHtml(formatPrice(service));
+      const category = escapeHtml(service?.category_name || "General");
+      const actionUrl = normalizeActionUrl(service);
+      const imageUrl = String(Array.isArray(service?.image_urls) ? service.image_urls[0] : "").trim();
+      const slots = Array.isArray(service?.slots) ? service.slots : [];
+      const availability = availabilityState(service);
+
+      const ctaMarkup = actionUrl
+        ? `<a class="cta" href="${escapeHtml(actionUrl)}" target="_blank" rel="noopener noreferrer">Book Now</a>`
+        : `<button class="cta-btn js-book-intent" type="button" data-service-id="${escapeHtml(service?.id || "")}" data-service-name="${name}">Book Now</button>`;
+
+      const imageMarkup = imageUrl
+        ? `<img src="${escapeHtml(imageUrl)}" alt="${name}" loading="lazy" />`
+        : "";
+
+      root.innerHTML = `
+        <article class="service-detail">
+          <div class="detail-hero">
+            ${imageMarkup}
+            <div class="detail-overlay">
+              <h2 class="detail-title">${name}</h2>
+              <span class="badge price">${price}</span>
+            </div>
+          </div>
+          <div class="detail-body">
+            <div class="detail-row">
+              <span class="badge">${category}</span>
+              <span class="${availability.available ? "availability" : "availability unavailable"}">${escapeHtml(availability.text)}</span>
+            </div>
+            <p class="detail-description">${fullDescription}</p>
+            <section class="slots">
+              <div class="slots-head">Time slots</div>
+              ${slots.length
+          ? `<ul class="slot-list">${slots.map(buildSlotRow).join("")}</ul>`
+          : `<div class="slot-item"><span class="slot-capacity">No explicit slots configured.</span></div>`
+        }
+            </section>
+            <div class="detail-actions">${ctaMarkup}</div>
+          </div>
+        </article>
+      `;
+      setTimeout(sendHeight, 60);
+    }
+
+    function renderServicesList(payload) {
+      const services = Array.isArray(payload?.services) ? payload.services : [];
+      if (!services.length) {
+        root.innerHTML = '<div class="empty">No services available right now.</div>';
+        return;
+      }
+
+      root.innerHTML = `
+        <section class="services-grid">
+          ${services.map(buildCard).join("")}
+        </section>
+      `;
+      setTimeout(sendHeight, 60);
+    }
+
+    function attachCardEvents() {
+      root.querySelectorAll(".js-book-intent").forEach((button) => {
+        button.addEventListener("click", () => {
+          const serviceId = String(button.getAttribute("data-service-id") || "").trim();
+          const serviceName = String(button.getAttribute("data-service-name") || "Service").trim();
+          emitBookIntent(serviceId, serviceName);
+        });
+      });
+    }
+
+    function render(payload) {
+      if (payload && payload.service && typeof payload.service === "object") {
+        renderServiceDetail(payload.service);
+        attachCardEvents();
+        return;
+      }
+
+      renderServicesList(payload);
+      attachCardEvents();
+    }
+
+    function clearHydrationTimers() {
+      if (hydrationTimeoutId) {
+        clearTimeout(hydrationTimeoutId);
+        hydrationTimeoutId = null;
+      }
+      if (hydrationPollId) {
+        clearInterval(hydrationPollId);
+        hydrationPollId = null;
+      }
+    }
+
+    function hydrate(raw) {
+      if (hydrated) return true;
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+      hydrated = true;
+      clearHydrationTimers();
+      render(payload);
+      return true;
+    }
+
+    function showLoadError() {
+      if (hydrated) return;
+      root.innerHTML = '<div id="loading">Unable to load services. Please retry.<br><button class="retry-btn" type="button" onclick="retryHydration()">Retry</button></div>';
+    }
+
+    function probeHydrationSources() {
+      if (hydrated) return true;
+      if (window.openai && hydrate(window.openai.toolOutput)) return true;
+      if (window.openai && typeof window.openai.getToolResult === "function") {
+        Promise.resolve(window.openai.getToolResult())
+          .then(hydrate)
+          .catch(() => { });
+      }
+      return hydrated;
+    }
+
+    function startHydrationChecks() {
+      clearHydrationTimers();
+      probeHydrationSources();
+
+      let polls = 0;
+      hydrationPollId = setInterval(() => {
+        polls += 1;
+        if (probeHydrationSources() || polls >= HYDRATION_MAX_POLLS) {
+          clearInterval(hydrationPollId);
+          hydrationPollId = null;
+        }
+      }, HYDRATION_POLL_MS);
+
+      hydrationTimeoutId = setTimeout(showLoadError, HYDRATION_TIMEOUT_MS);
+    }
+
+    function retryHydration() {
+      if (hydrated) return;
+      root.innerHTML = '<div id="loading">Retrying...</div>';
+      startHydrationChecks();
+    }
+
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage({ type: "widget:resize", height: height }, "*");
+    }
+
+    window.retryHydration = retryHydration;
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== "object") return;
+      if (msg.type === "hydrate" && msg.data) {
+        hydrate(msg.data);
+        return;
+      }
+      if (msg.jsonrpc === "2.0" && msg.method === "ui/notifications/tool-result") {
+        hydrate(msg);
+      }
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+      sendHeight();
+    });
+    resizeObserver.observe(document.body);
+
+    window.addEventListener("load", sendHeight);
+    window.addEventListener("resize", sendHeight);
+
+    startHydrationChecks();
+  </script>
+</body>
+
+</html>
