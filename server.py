@@ -3,12 +3,14 @@ import re
 import uuid
 import json
 import logging
+import math
 from time import perf_counter
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 from urllib import request, error
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
@@ -252,6 +254,345 @@ def _resolve_property_id(property_id: str, room_id: str, question: str) -> str:
     raise ValueError("Either property_id or room_id is required for search_knowledge.")
 
 
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+EXPERIENCES_CARD_WIDGET_URI = "ui://widget/experiences-card.html"
+
+_GOOGLE_SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText"
+_PRICE_ENUM_BY_LEVEL = {
+    0: "PRICE_LEVEL_FREE",
+    1: "PRICE_LEVEL_INEXPENSIVE",
+    2: "PRICE_LEVEL_MODERATE",
+    3: "PRICE_LEVEL_EXPENSIVE",
+    4: "PRICE_LEVEL_VERY_EXPENSIVE",
+}
+_PRICE_LEVEL_BY_ENUM = {v: k for k, v in _PRICE_ENUM_BY_LEVEL.items()}
+_IGNORED_TYPES = {"point_of_interest", "establishment", "food", "restaurant"}
+_FIELD_MASK_SEARCH = ",".join(
+    [
+        "places.id",
+        "places.name",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.location",
+        "places.rating",
+        "places.userRatingCount",
+        "places.priceLevel",
+        "places.types",
+        "places.internationalPhoneNumber",
+        "places.nationalPhoneNumber",
+        "places.websiteUri",
+        "places.photos",
+        "places.regularOpeningHours",
+        "places.currentOpeningHours",
+        "places.googleMapsUri",
+    ]
+)
+
+
+def _to_float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int_or_none(value: Any) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_text_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if item is not None]
+
+
+def _curated_maps_url(
+    google_place_id: str | None,
+    lat: float | None,
+    lng: float | None,
+) -> str | None:
+    if google_place_id:
+        return (
+            "https://www.google.com/maps/search/?api=1"
+            f"&query_place_id={google_place_id}"
+        )
+    if lat is not None and lng is not None:
+        return f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
+    return None
+
+
+def _normalize_curated_place(row: dict[str, Any]) -> dict[str, Any]:
+    lat = _to_float_or_none(row.get("lat")) if row.get("lat") is not None else None
+    lng = _to_float_or_none(row.get("lng")) if row.get("lng") is not None else None
+    photo_urls = _to_text_list(row.get("photo_urls"))
+    return {
+        "place_id": str(row.get("id", "")),
+        "source": "curated",
+        "name": row.get("name", ""),
+        "address": row.get("address"),
+        "lat": lat,
+        "lng": lng,
+        "rating": _to_float_or_none(row.get("rating"))
+        if row.get("rating") is not None
+        else None,
+        "review_count": _to_int_or_none(row.get("review_count")),
+        "price_level": _to_int_or_none(row.get("price_level")),
+        "cuisine": _to_text_list(row.get("cuisine")),
+        "phone": row.get("phone"),
+        "website": row.get("website"),
+        "photo_url": photo_urls[0] if photo_urls else None,
+        "opening_hours": row.get("opening_hours"),
+        "is_open_now": None,
+        "walking_minutes": _to_int_or_none(row.get("walking_minutes")),
+        "distance_m": None,
+        "best_for": _to_text_list(row.get("best_for")),
+        "meal_types": _to_text_list(row.get("meal_types")),
+        "is_curated": True,
+        "is_sponsored": bool(row.get("sponsored", False)),
+        "maps_url": _curated_maps_url(row.get("google_place_id"), lat, lng),
+    }
+
+
+def _search_google_places(
+    lat: float,
+    lng: float,
+    query: str,
+    cuisine: str,
+    price_level: int,
+    open_now: bool,
+    limit: int,
+    radius_m: int = 5000,
+) -> list[dict[str, Any]]:
+    if not GOOGLE_PLACES_API_KEY:
+        return []
+
+    safe_limit = max(1, min(int(limit or 8), 20))
+    radius = max(100, min(int(radius_m or 5000), 50000))
+
+    text_terms = [query.strip() or "restaurant"]
+    if cuisine.strip():
+        text_terms.append(cuisine.strip())
+    payload: dict[str, Any] = {
+        "textQuery": " ".join(text_terms),
+        "includedType": "restaurant",
+        "maxResultCount": safe_limit,
+        "locationBias": {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": float(radius),
+            }
+        },
+        "rankPreference": "DISTANCE",
+        "openNow": bool(open_now),
+    }
+    if price_level > 0 and price_level in _PRICE_ENUM_BY_LEVEL:
+        payload["priceLevels"] = [_PRICE_ENUM_BY_LEVEL[price_level]]
+
+    req = request.Request(
+        _GOOGLE_SEARCH_TEXT_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": _FIELD_MASK_SEARCH,
+        },
+    )
+    try:
+        with request.urlopen(req, timeout=12) as resp:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body)
+    except (error.HTTPError, error.URLError, TimeoutError, ValueError) as exc:
+        logger.warning("Google Places search failed: %s", exc)
+        return []
+
+    places = data.get("places")
+    if not isinstance(places, list):
+        return []
+    return [place for place in places if isinstance(place, dict)]
+
+
+def _extract_place_id(raw: dict[str, Any]) -> str:
+    if isinstance(raw.get("id"), str):
+        return raw["id"]
+    name = raw.get("name")
+    if isinstance(name, str) and "/" in name:
+        return name.split("/")[-1]
+    return ""
+
+
+def _display_place_name(raw: dict[str, Any]) -> str:
+    display_name = raw.get("displayName")
+    if isinstance(display_name, dict):
+        text = display_name.get("text")
+        if isinstance(text, str):
+            return text
+    if isinstance(display_name, str):
+        return display_name
+    return "Unknown place"
+
+
+def _normalize_price_level(value: Any) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value if 0 <= value <= 4 else None
+    if isinstance(value, str):
+        return _PRICE_LEVEL_BY_ENUM.get(value)
+    return None
+
+
+def _extract_cuisine(types: Any) -> list[str]:
+    if not isinstance(types, list):
+        return []
+    labels: list[str] = []
+    for place_type in types:
+        if not isinstance(place_type, str) or place_type in _IGNORED_TYPES:
+            continue
+        label = place_type.replace("_", " ").strip().title()
+        if label and label not in labels:
+            labels.append(label)
+        if len(labels) >= 4:
+            break
+    return labels
+
+
+def _normalize_opening_hours(raw: dict[str, Any]) -> dict[str, Any] | None:
+    source = raw.get("regularOpeningHours")
+    if not isinstance(source, dict):
+        current = raw.get("currentOpeningHours")
+        source = current if isinstance(current, dict) else None
+    if not isinstance(source, dict):
+        return None
+
+    weekday = source.get("weekdayDescriptions")
+    if not isinstance(weekday, list):
+        return None
+
+    normalized: dict[str, Any] = {}
+    for row in weekday:
+        if not isinstance(row, str) or ":" not in row:
+            continue
+        day, value = row.split(":", 1)
+        normalized[day.strip().lower()] = value.strip()
+    return normalized or None
+
+
+def _extract_open_now(raw: dict[str, Any]) -> bool | None:
+    current = raw.get("currentOpeningHours")
+    if isinstance(current, dict) and isinstance(current.get("openNow"), bool):
+        return current.get("openNow")
+    regular = raw.get("regularOpeningHours")
+    if isinstance(regular, dict) and isinstance(regular.get("openNow"), bool):
+        return regular.get("openNow")
+    return None
+
+
+def _photo_url(photos: Any) -> str | None:
+    if not isinstance(photos, list) or not photos:
+        return None
+    first = photos[0] if isinstance(photos[0], dict) else None
+    if not isinstance(first, dict):
+        return None
+    photo_name = first.get("name")
+    if not isinstance(photo_name, str) or not photo_name:
+        return None
+    return (
+        f"https://places.googleapis.com/v1/{photo_name}/media"
+        f"?maxHeightPx=600&key={quote(GOOGLE_PLACES_API_KEY, safe='')}"
+    )
+
+
+def _normalize_google_place(raw: dict[str, Any]) -> dict[str, Any]:
+    place_id = _extract_place_id(raw)
+    location = raw.get("location") if isinstance(raw.get("location"), dict) else {}
+    lat = _to_float_or_none(location.get("latitude"))
+    lng = _to_float_or_none(location.get("longitude"))
+    price_level = _normalize_price_level(raw.get("priceLevel"))
+
+    maps_url = raw.get("googleMapsUri")
+    if not maps_url:
+        if place_id:
+            maps_url = (
+                "https://www.google.com/maps/search/?api=1"
+                f"&query_place_id={place_id}"
+            )
+        elif lat is not None and lng is not None:
+            maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
+
+    return {
+        "place_id": place_id,
+        "source": "google",
+        "name": _display_place_name(raw),
+        "address": raw.get("formattedAddress"),
+        "lat": lat,
+        "lng": lng,
+        "rating": _to_float_or_none(raw.get("rating")),
+        "review_count": _to_int_or_none(raw.get("userRatingCount")),
+        "price_level": price_level,
+        "cuisine": _extract_cuisine(raw.get("types")),
+        "phone": raw.get("internationalPhoneNumber") or raw.get("nationalPhoneNumber"),
+        "website": raw.get("websiteUri"),
+        "photo_url": _photo_url(raw.get("photos")),
+        "opening_hours": _normalize_opening_hours(raw),
+        "is_open_now": _extract_open_now(raw),
+        "walking_minutes": None,
+        "distance_m": None,
+        "best_for": [],
+        "meal_types": [],
+        "is_curated": False,
+        "is_sponsored": False,
+        "maps_url": maps_url,
+    }
+
+
+def _haversine_distance_km(
+    origin_lat: float,
+    origin_lng: float,
+    target_lat: float,
+    target_lng: float,
+) -> float:
+    earth_radius_km = 6371.0
+    d_lat = math.radians(target_lat - origin_lat)
+    d_lng = math.radians(target_lng - origin_lng)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(math.radians(origin_lat))
+        * math.cos(math.radians(target_lat))
+        * math.sin(d_lng / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return earth_radius_km * c
+
+
+def _with_walking_distance(
+    place: dict[str, Any],
+    property_lat: float | None,
+    property_lng: float | None,
+) -> dict[str, Any]:
+    if property_lat is None or property_lng is None:
+        return place
+    place_lat = _to_float_or_none(place.get("lat"))
+    place_lng = _to_float_or_none(place.get("lng"))
+    if place_lat is None or place_lng is None:
+        return place
+
+    distance_km = _haversine_distance_km(property_lat, property_lng, place_lat, place_lng)
+    distance_m = int(round(distance_km * 1000))
+    updated = dict(place)
+    updated["distance_m"] = distance_m
+    if not updated.get("walking_minutes"):
+        updated["walking_minutes"] = max(1, int(round(distance_m / 80)))
+    return updated
+
+
 def _build_monosend_payload(
     *,
     guest_email: str,
@@ -414,6 +755,20 @@ def room_gallery_resource() -> str:
 )
 def knowledge_answer_resource() -> str:
     return load_widget("knowledge_answer")
+
+
+@mcp.resource(
+    uri=EXPERIENCES_CARD_WIDGET_URI,
+    name="Experiences Card Widget",
+    description="Displays nearby places/restaurants as cards with photos, ratings, and directions",
+    mime_type=RESOURCE_MIME,
+    meta={
+        "openai/widgetDescription": "Interactive experience/restaurant cards with directions and booking links.",
+        "openai/widgetPrefersBorder": False,
+    },
+)
+def experiences_card_resource() -> str:
+    return load_widget("experiences_card")
 
 
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
@@ -1439,6 +1794,153 @@ def room_gallery(
         "_meta": {
             "ui": {"resourceUri": ROOM_GALLERY_WIDGET_URI},
             "openai/outputTemplate": ROOM_GALLERY_WIDGET_URI,
+            "openai/widgetAccessible": True,
+        },
+    }
+
+
+# ── Tool 7: search_nearby_places ───────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": True},
+    app={"resourceUri": EXPERIENCES_CARD_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": EXPERIENCES_CARD_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def search_nearby_places(
+    property_id: str = "",
+    query: str = "restaurant",
+    cuisine: str = "",
+    price_level: int = 0,
+    open_now: bool = False,
+    limit: int = 8,
+) -> dict:
+    """Search nearby places for a property.
+    Returns curated recommendations plus additional nearby Google Places results."""
+
+    normalized_query = str(query or "").strip() or "restaurant"
+    normalized_cuisine = str(cuisine or "").strip()
+    safe_limit = max(1, min(int(limit or 8), 20))
+
+    try:
+        resolved_property_id = _resolve_property_id(
+            str(property_id or "").strip(),
+            "",
+            normalized_query,
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "property_id is required when multiple properties exist."
+        ) from exc
+    property_row = fetch_one(
+        "SELECT id, lat, lng FROM properties WHERE id = %s LIMIT 1",
+        [resolved_property_id],
+    )
+    if not property_row:
+        raise ValueError("property_id not found")
+
+    property_lat = _to_float_or_none(property_row.get("lat"))
+    property_lng = _to_float_or_none(property_row.get("lng"))
+
+    curated_rows = fetch_all(
+        """
+        SELECT *
+        FROM curated_places
+        WHERE property_id = %s
+          AND deleted_at IS NULL
+        ORDER BY sponsored DESC, sort_order ASC, created_at DESC
+        LIMIT %s
+        """,
+        [resolved_property_id, max(safe_limit, 12)],
+    )
+
+    filtered_curated: list[dict[str, Any]] = []
+    requested_cuisine = normalized_cuisine.lower()
+    for row in curated_rows:
+        row_price = _to_int_or_none(row.get("price_level"))
+        if price_level and row_price not in (None, price_level):
+            continue
+        if requested_cuisine:
+            cuisines = [str(item).lower() for item in _to_text_list(row.get("cuisine"))]
+            if requested_cuisine not in cuisines:
+                continue
+        filtered_curated.append(row)
+
+    curated = [
+        _with_walking_distance(_normalize_curated_place(row), property_lat, property_lng)
+        for row in filtered_curated[:safe_limit]
+    ]
+
+    nearby: list[dict[str, Any]] = []
+    if property_lat is not None and property_lng is not None:
+        google_raw = _search_google_places(
+            lat=property_lat,
+            lng=property_lng,
+            query=normalized_query,
+            cuisine=normalized_cuisine,
+            price_level=price_level,
+            open_now=open_now,
+            limit=safe_limit + len(curated),
+        )
+        google_places = [_normalize_google_place(raw) for raw in google_raw]
+        curated_google_ids = {
+            str(row.get("google_place_id")).strip()
+            for row in filtered_curated
+            if row.get("google_place_id")
+        }
+        deduped_google = [
+            place
+            for place in google_places
+            if place.get("place_id") and place.get("place_id") not in curated_google_ids
+        ]
+        nearby = [
+            _with_walking_distance(place, property_lat, property_lng)
+            for place in deduped_google[:safe_limit]
+        ]
+
+    structured = {
+        "property_id": resolved_property_id,
+        "curated": curated,
+        "nearby": nearby,
+        "count_curated": len(curated),
+        "count_nearby": len(nearby),
+    }
+
+    log_tool_call(
+        "search_nearby_places",
+        f"Searched nearby places: '{normalized_query}'",
+        property_id=resolved_property_id,
+        request_payload={
+            "property_id_input": property_id or None,
+            "property_id_resolved": resolved_property_id,
+            "query": normalized_query,
+            "cuisine": normalized_cuisine,
+            "price_level": price_level,
+            "open_now": open_now,
+            "limit": safe_limit,
+        },
+        response_payload={
+            "count_curated": len(curated),
+            "count_nearby": len(nearby),
+        },
+    )
+
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": (
+                    f"Found {len(curated)} curated and {len(nearby)} nearby place(s) "
+                    f"for '{normalized_query}'."
+                ),
+            }
+        ],
+        "structuredContent": structured,
+        "_meta": {
+            "ui": {"resourceUri": EXPERIENCES_CARD_WIDGET_URI},
+            "openai/outputTemplate": EXPERIENCES_CARD_WIDGET_URI,
             "openai/widgetAccessible": True,
         },
     }
