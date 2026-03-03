@@ -225,7 +225,7 @@ def _log_rag_query(
         logger.warning("Failed to persist rag_query_logs: %s", exc)
 
 
-def _resolve_property_id(property_id: str, room_id: str, question: str) -> str:
+def _resolve_property_id(property_id: str, room_id: str) -> str:
     normalized_room_id = str(room_id or "").strip()
     if normalized_room_id:
         room = fetch_one(
@@ -240,18 +240,7 @@ def _resolve_property_id(property_id: str, room_id: str, question: str) -> str:
     if normalized_property_id:
         return normalized_property_id
 
-    match = re.search(
-        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
-        str(question or ""),
-    )
-    if match:
-        return match.group(0)
-
-    rows = fetch_all("SELECT id FROM properties ORDER BY created_at DESC LIMIT 2")
-    if len(rows) == 1:
-        return str(rows[0]["id"])
-
-    raise ValueError("Either property_id or room_id is required for search_knowledge.")
+    raise ValueError("Either property_id or room_id is required.")
 
 
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
@@ -1185,9 +1174,9 @@ def search_knowledge(
     normalized_question = str(question or "").strip()
     normalized_property_input = str(property_id or "").strip()
     normalized_room_id = str(room_id or "").strip()
-    normalized_property_id = _resolve_property_id(
-        normalized_property_input, normalized_room_id, normalized_question
-    )
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for search_knowledge.")
+    normalized_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
     normalized_language = str(language or "").strip().lower() or None
 
     if not normalized_question:
@@ -1811,6 +1800,7 @@ def room_gallery(
 )
 def search_nearby_places(
     property_id: str = "",
+    room_id: str = "",
     query: str = "restaurant",
     cuisine: str = "",
     price_level: int = 0,
@@ -1822,18 +1812,12 @@ def search_nearby_places(
 
     normalized_query = str(query or "").strip() or "restaurant"
     normalized_cuisine = str(cuisine or "").strip()
+    normalized_property_input = str(property_id or "").strip()
+    normalized_room_id = str(room_id or "").strip()
     safe_limit = max(1, min(int(limit or 8), 20))
-
-    try:
-        resolved_property_id = _resolve_property_id(
-            str(property_id or "").strip(),
-            "",
-            normalized_query,
-        )
-    except ValueError as exc:
-        raise ValueError(
-            "property_id is required when multiple properties exist."
-        ) from exc
+    if not normalized_property_input and not normalized_room_id:
+        raise ValueError("Either property_id or room_id is required for search_nearby_places.")
+    resolved_property_id = _resolve_property_id(normalized_property_input, normalized_room_id)
     property_row = fetch_one(
         "SELECT id, lat, lng FROM properties WHERE id = %s LIMIT 1",
         [resolved_property_id],
@@ -1913,7 +1897,8 @@ def search_nearby_places(
         f"Searched nearby places: '{normalized_query}'",
         property_id=resolved_property_id,
         request_payload={
-            "property_id_input": property_id or None,
+            "room_id": normalized_room_id or None,
+            "property_id_input": normalized_property_input or None,
             "property_id_resolved": resolved_property_id,
             "query": normalized_query,
             "cuisine": normalized_cuisine,

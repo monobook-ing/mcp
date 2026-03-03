@@ -159,6 +159,19 @@ class SearchKnowledgeTests(unittest.TestCase):
             ):
                 server.search_knowledge(question="Question")
 
+    def test_neither_id_still_fails_when_single_property_exists(self):
+        with patch.object(
+            server,
+            "fetch_all",
+            return_value=[{"id": "single-property"}],
+        ) as fetch_all_mock:
+            with self.assertRaisesRegex(
+                ValueError,
+                "Either property_id or room_id is required for search_knowledge.",
+            ):
+                server.search_knowledge(question="Question")
+        fetch_all_mock.assert_not_called()
+
     def test_invalid_room_id_raises_error(self):
         with patch.object(server, "fetch_one", return_value=None):
             with self.assertRaisesRegex(ValueError, "room_id not found"):
