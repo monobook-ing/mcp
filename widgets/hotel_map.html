@@ -47,12 +47,24 @@
       position: relative;
       border-radius: var(--radius-xl);
       overflow: hidden;
-      height: 400px;
+      height: 680px;
       background:
         radial-gradient(900px 480px at 92% -15%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
         radial-gradient(700px 420px at -20% 100%, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0) 60%),
         linear-gradient(145deg, #eff3fb 0%, #ffffff 70%);
       border: 1px solid rgba(17, 24, 39, 0.08);
+    }
+
+    .map-inline-shell::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 180px;
+      background: linear-gradient(180deg, rgba(247, 248, 251, 0) 0%, rgba(247, 248, 251, 0.9) 78%, rgba(247, 248, 251, 1) 100%);
+      pointer-events: none;
+      z-index: 3;
     }
 
     .map-canvas {
@@ -64,7 +76,7 @@
       position: absolute;
       left: 14px;
       top: 14px;
-      z-index: 3;
+      z-index: 6;
       padding: 8px 12px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.82);
@@ -82,37 +94,61 @@
       position: absolute;
       right: 14px;
       top: 14px;
-      z-index: 3;
+      z-index: 7;
       width: 44px;
       height: 44px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      border: 1px solid rgba(17, 24, 39, 0.12);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.2);
-      color: #0f172a;
-      font-size: 20px;
-      font-weight: 700;
+      background: rgba(255, 255, 255, 0.9);
+      color: #111827;
       cursor: pointer;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
-      transition: transform 0.16s ease, background 0.16s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
     }
 
     .expand-btn:hover {
-      transform: translateY(-1px);
-      background: rgba(255, 255, 255, 0.32);
+      background: #fff;
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .expand-btn:active {
-      transform: translateY(0);
+      transform: scale(1);
+    }
+
+    .expand-btn-icon {
+      display: inline-flex;
+      width: 20px;
+      height: 20px;
+      transform: rotate(45deg);
+      transform-origin: center;
+    }
+
+    .expand-btn-icon svg {
+      width: 100%;
+      height: 100%;
     }
 
     .inline-cards {
       display: flex;
       gap: 12px;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4;
       overflow-x: auto;
-      padding: 2px 2px 8px;
+      padding: 6px 14px 16px;
       scroll-snap-type: x mandatory;
+      pointer-events: none;
+    }
+
+    .inline-cards .property-card,
+    .inline-cards .empty-state {
+      pointer-events: auto;
     }
 
     .inline-cards::-webkit-scrollbar {
@@ -584,7 +620,7 @@
 
     @media (max-width: 760px) {
       .map-inline-shell {
-        height: 360px;
+        height: 520px;
       }
 
       .fullscreen-overlay {
@@ -734,9 +770,13 @@
           <div id="inlineMapShell" class="map-inline-shell">
             <div id="mapCanvas" class="map-canvas" role="img" aria-label="Hotel map"></div>
             <div id="mapStatus" class="map-overlay-status">Loading map...</div>
-            <button id="expandBtn" class="expand-btn" type="button" aria-label="Open fullscreen map">⤢</button>
+            <button id="expandBtn" class="expand-btn" type="button" aria-label="Open fullscreen map">
+              <span class="expand-btn-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-left-right-icon lucide-chevrons-left-right"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg>
+              </span>
+            </button>
+            <div id="inlineCards" class="inline-cards"></div>
           </div>
-          <div id="inlineCards" class="inline-cards"></div>
         </div>
       `;
 
