@@ -905,6 +905,209 @@ def search_hotels(
     }
 
 
+def _normalize_search_text(value: object) -> str:
+    if value is None:
+        return ""
+    return " ".join(re.split(r"\s+", str(value).strip().lower()))
+
+
+def _normalize_search_amenities(raw_amenities: object) -> list[str]:
+    if isinstance(raw_amenities, list):
+        return [str(item) for item in raw_amenities if item is not None]
+    if raw_amenities is None:
+        return []
+    return [str(raw_amenities)]
+
+
+def _room_matches_text_filters(
+    unit: dict[str, Any],
+    normalized_query: str,
+    normalized_amenity: str,
+) -> bool:
+    accommodation = unit.get("properties")
+    if not isinstance(accommodation, dict):
+        accommodation = {}
+
+    amenities_list = _normalize_search_amenities(unit.get("amenities"))
+    amenities_blob = _normalize_search_text(" ".join(amenities_list))
+    searchable_blob = _normalize_search_text(
+        " ".join(
+            [
+                str(unit.get("name") or ""),
+                str(unit.get("description") or ""),
+                str(unit.get("type") or ""),
+                str(accommodation.get("name") or ""),
+                str(accommodation.get("city") or ""),
+                str(accommodation.get("state") or ""),
+                str(accommodation.get("country") or ""),
+                " ".join(amenities_list),
+            ]
+        )
+    )
+
+    if normalized_query:
+        query_terms = [term for term in normalized_query.split() if len(term) > 2]
+        if not query_terms:
+            query_terms = normalized_query.split()
+        if not any(term in searchable_blob for term in query_terms):
+            return False
+
+    if normalized_amenity and normalized_amenity not in amenities_blob:
+        return False
+    return True
+
+
+def _room_matches_amenity_filter(unit: dict[str, Any], normalized_amenity: str) -> bool:
+    if not normalized_amenity:
+        return True
+    amenities_list = _normalize_search_amenities(unit.get("amenities"))
+    amenities_blob = _normalize_search_text(" ".join(amenities_list))
+    return normalized_amenity in amenities_blob
+
+
+def _row_to_search_unit(row: dict[str, Any]) -> dict[str, Any]:
+    """Convert a flat SQL row into the nested dict structure expected downstream."""
+    data = dict(row)
+    data["properties"] = {
+        "city": data.pop("p_city", None),
+        "state": data.pop("p_state", None),
+        "country": data.pop("p_country", None),
+        "rating": data.pop("p_rating", None),
+        "image_url": data.pop("p_image_url", None),
+        "lat": data.pop("p_lat", None),
+        "lng": data.pop("p_lng", None),
+        "name": data.pop("p_name", None),
+        "street": data.pop("p_street", None),
+    }
+    return data
+
+
+def _run_room_candidate_query(
+    *,
+    hotel_name: str,
+    city: str,
+    country: str,
+    unit_type: str,
+    max_price: Optional[float],
+    min_guests: Optional[int],
+    include_country: bool,
+    require_coordinates: bool,
+) -> list[dict[str, Any]]:
+    conditions = []
+    params = []
+    account_pids = get_account_property_ids()
+
+    if require_coordinates:
+        conditions.extend(["p.lat IS NOT NULL", "p.lng IS NOT NULL"])
+    if hotel_name:
+        conditions.append("(p.description ILIKE %s OR p.city ILIKE %s)")
+        params.extend([f"%{hotel_name}%", f"%{hotel_name}%"])
+    if city:
+        conditions.append("p.city ILIKE %s")
+        params.append(f"%{city}%")
+    if include_country and country:
+        conditions.append("p.country ILIKE %s")
+        params.append(f"%{country}%")
+    if unit_type:
+        conditions.append("r.type ILIKE %s")
+        params.append(f"%{unit_type}%")
+    if max_price is not None:
+        conditions.append("r.price_per_night <= %s")
+        params.append(max_price)
+    if min_guests is not None:
+        conditions.append("r.max_guests >= %s")
+        params.append(min_guests)
+    if account_pids is not None:
+        if not account_pids:
+            return []
+        scoped_pids = sorted(account_pids)
+        placeholders = ", ".join(["%s"] * len(scoped_pids))
+        conditions.append(f"r.property_id IN ({placeholders})")
+        params.extend(scoped_pids)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    sql = f"""
+        SELECT r.*,
+               p.city AS p_city, p.state AS p_state, p.country AS p_country,
+               p.rating AS p_rating, p.image_url AS p_image_url,
+               p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name,
+               p.street AS p_street
+        FROM rooms r
+        JOIN properties p ON r.property_id = p.id
+        {where}
+    """
+    rows = fetch_all(sql, params or None)
+    return [_row_to_search_unit(row) for row in rows]
+
+
+def _search_room_candidates(
+    *,
+    hotel_name: str,
+    city: str,
+    country: str,
+    unit_type: str,
+    max_price: Optional[float],
+    min_guests: Optional[int],
+    amenity: str,
+    query: str,
+    require_coordinates: bool,
+) -> tuple[list[dict[str, Any]], bool]:
+    normalized_query = _normalize_search_text(query)
+    normalized_amenity = _normalize_search_text(amenity)
+
+    sql_results = _run_room_candidate_query(
+        hotel_name=hotel_name,
+        city=city,
+        country=country,
+        unit_type=unit_type,
+        max_price=max_price,
+        min_guests=min_guests,
+        include_country=True,
+        require_coordinates=require_coordinates,
+    )
+    units = [
+        unit
+        for unit in sql_results
+        if _room_matches_text_filters(unit, normalized_query, normalized_amenity)
+    ]
+    if not units and sql_results and normalized_query:
+        units = [
+            unit
+            for unit in sql_results
+            if _room_matches_amenity_filter(unit, normalized_amenity)
+        ]
+    relaxed_country_filter = False
+
+    # If city+country yields nothing, retry city-only for region ambiguities.
+    if not units and city and country:
+        relaxed_sql = _run_room_candidate_query(
+            hotel_name=hotel_name,
+            city=city,
+            country=country,
+            unit_type=unit_type,
+            max_price=max_price,
+            min_guests=min_guests,
+            include_country=False,
+            require_coordinates=require_coordinates,
+        )
+        relaxed_units = [
+            unit
+            for unit in relaxed_sql
+            if _room_matches_text_filters(unit, normalized_query, normalized_amenity)
+        ]
+        if not relaxed_units and relaxed_sql and normalized_query:
+            relaxed_units = [
+                unit
+                for unit in relaxed_sql
+                if _room_matches_amenity_filter(unit, normalized_amenity)
+            ]
+        if relaxed_units:
+            units = relaxed_units
+            relaxed_country_filter = True
+
+    return units, relaxed_country_filter
+
+
 # ── Tool 2: search_properties_map ───────────────────────────────────────────
 
 @mcp.tool(
@@ -931,7 +1134,7 @@ def search_properties_map(
     Best for browsing multiple properties in a city or region.
     Returns a map view with property locations, prices, and details."""
 
-    def _build_response(properties: list[dict]) -> dict:
+    def _build_response(properties: list[dict[str, Any]], relaxed_country_filter: bool = False) -> dict:
         structured = {
             "properties": properties,
             "count": len(properties),
@@ -948,9 +1151,19 @@ def search_properties_map(
                 "query": query,
             },
             "maps_api_key": GOOGLE_PLACES_API_KEY,
+            "relaxed_country_filter": relaxed_country_filter,
+            "coordinates_required": True,
         }
         return {
-            "content": [{"type": "text", "text": f"Found {len(properties)} properties on the map."}],
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        f"Found {len(properties)} properties on the map. "
+                        "Only properties with valid coordinates (lat/lng) are shown."
+                    ),
+                }
+            ],
             "structuredContent": structured,
             "_meta": {
                 "ui": {"resourceUri": HOTEL_MAP_WIDGET_URI},
@@ -959,127 +1172,70 @@ def search_properties_map(
             },
         }
 
-    conditions = ["p.lat IS NOT NULL", "p.lng IS NOT NULL"]
-    params: list[Any] = []
-    account_pids = get_account_property_ids()
-
-    if city:
-        conditions.append("p.city ILIKE %s")
-        params.append(f"%{city}%")
-    if country:
-        conditions.append("p.country ILIKE %s")
-        params.append(f"%{country}%")
-    if hotel_name:
-        conditions.append("p.description ILIKE %s")
-        params.append(f"%{hotel_name}%")
-    if unit_type:
-        conditions.append("r.type ILIKE %s")
-        params.append(f"%{unit_type}%")
-    if max_price is not None:
-        conditions.append("r.price_per_night <= %s")
-        params.append(max_price)
-    if min_guests is not None:
-        conditions.append("r.max_guests >= %s")
-        params.append(min_guests)
-    if amenity:
-        conditions.append("array_to_string(COALESCE(r.amenities, ARRAY[]::text[]), ' ') ILIKE %s")
-        params.append(f"%{amenity}%")
-    if query:
-        like = f"%{query}%"
-        conditions.append(
-            "("
-            "r.name ILIKE %s OR "
-            "r.description ILIKE %s OR "
-            "r.type ILIKE %s OR "
-            "p.description ILIKE %s OR "
-            "p.city ILIKE %s OR "
-            "p.state ILIKE %s OR "
-            "p.country ILIKE %s OR "
-            "array_to_string(COALESCE(r.amenities, ARRAY[]::text[]), ' ') ILIKE %s"
-            ")"
-        )
-        params.extend([like, like, like, like, like, like, like, like])
-    if account_pids is not None:
-        if not account_pids:
-            return _build_response([])
-        scoped_pids = sorted(account_pids)
-        placeholders = ", ".join(["%s"] * len(scoped_pids))
-        conditions.append(f"p.id IN ({placeholders})")
-        params.extend(scoped_pids)
-
-    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-    sql = f"""
-        SELECT
-            p.id AS property_id,
-            p.description AS property_name,
-            p.image_url AS property_image_url,
-            p.rating AS property_rating,
-            p.city AS property_city,
-            p.state AS property_state,
-            p.country AS property_country,
-            p.street AS property_street,
-            p.lat AS property_lat,
-            p.lng AS property_lng,
-            r.id AS room_id,
-            r.name AS room_name,
-            r.type AS room_type,
-            r.price_per_night,
-            r.currency_code,
-            r.max_guests,
-            r.bed_config,
-            r.images AS room_images
-        FROM properties p
-        JOIN rooms r ON r.property_id = p.id
-        {where}
-        ORDER BY p.id, r.price_per_night ASC
-    """
-    rows = fetch_all(sql, params or None)
-    if not rows:
-        return _build_response([])
+    units, relaxed_country_filter = _search_room_candidates(
+        hotel_name=hotel_name,
+        city=city,
+        country=country,
+        unit_type=unit_type,
+        max_price=max_price,
+        min_guests=min_guests,
+        amenity=amenity,
+        query=query,
+        require_coordinates=True,
+    )
+    if not units:
+        return _build_response([], relaxed_country_filter=relaxed_country_filter)
 
     today = date.today().isoformat()
     eff_in = check_in if check_in else today
     eff_out = check_out if check_out else (date.today() + timedelta(days=1)).isoformat()
-    occupied_room_ids = _get_occupied_room_ids([str(r["room_id"]) for r in rows], eff_in, eff_out)
-    available_rows = [r for r in rows if str(r["room_id"]) not in occupied_room_ids]
+    occupied_room_ids = _get_occupied_room_ids([str(unit["id"]) for unit in units], eff_in, eff_out)
+    available_units = [unit for unit in units if str(unit["id"]) not in occupied_room_ids]
 
-    if not available_rows:
-        return _build_response([])
+    if not available_units:
+        return _build_response([], relaxed_country_filter=relaxed_country_filter)
 
     grouped: dict[str, dict[str, Any]] = {}
 
-    for row in available_rows:
-        property_id = str(row["property_id"])
-        room_images = row.get("room_images")
+    for unit in available_units:
+        property_id = str(unit.get("property_id") or "")
+        if not property_id:
+            continue
+
+        accommodation = unit.get("properties")
+        if not isinstance(accommodation, dict):
+            accommodation = {}
+
+        room_images = unit.get("images")
         if not isinstance(room_images, list):
             room_images = [str(room_images)] if room_images else []
 
-        room_price = float(row.get("price_per_night") or 0)
+        room_price = float(unit.get("price_per_night") or 0)
         room_image = room_images[0] if room_images else ""
         room_payload = {
-            "id": str(row.get("room_id") or ""),
-            "name": row.get("room_name"),
-            "type": row.get("room_type"),
+            "id": str(unit.get("id") or ""),
+            "name": unit.get("name"),
+            "type": unit.get("type"),
             "price_per_night": room_price,
-            "currency_code": row.get("currency_code"),
-            "max_guests": row.get("max_guests"),
+            "currency_code": unit.get("currency_code"),
+            "max_guests": unit.get("max_guests"),
             "image_url": room_image,
-            "bed_config": row.get("bed_config"),
+            "bed_config": unit.get("bed_config"),
         }
 
         if property_id not in grouped:
             grouped[property_id] = {
                 "id": property_id,
-                "name": row.get("property_name") or "Hotel",
-                "image_url": row.get("property_image_url") or "",
+                "name": accommodation.get("name") or "Hotel",
+                "image_url": accommodation.get("image_url") or "",
                 "room_image": room_image,
-                "rating": row.get("property_rating"),
-                "city": row.get("property_city"),
-                "state": row.get("property_state"),
-                "country": row.get("property_country"),
-                "street": row.get("property_street"),
-                "lat": float(row.get("property_lat") or 0),
-                "lng": float(row.get("property_lng") or 0),
+                "rating": accommodation.get("rating"),
+                "city": accommodation.get("city"),
+                "state": accommodation.get("state"),
+                "country": accommodation.get("country"),
+                "street": accommodation.get("street"),
+                "lat": float(accommodation.get("lat") or 0),
+                "lng": float(accommodation.get("lng") or 0),
                 "rooms": [room_payload],
             }
             continue
@@ -1124,10 +1280,14 @@ def search_properties_map(
             "check_in": check_in,
             "check_out": check_out,
         },
-        response_payload={"count": len(properties)},
+        response_payload={
+            "count": len(properties),
+            "relaxed_country_filter": relaxed_country_filter,
+            "coordinates_required": True,
+        },
     )
 
-    return _build_response(properties)
+    return _build_response(properties, relaxed_country_filter=relaxed_country_filter)
 
 
 # ── Tool 3: search_rooms ──────────────────────────────────────────────────
@@ -1174,135 +1334,17 @@ def search_rooms(
     Use check_in/check_out in YYYY-MM-DD format if dates are known.
     By default only available rooms returned. Set show_occupied=True to include occupied rooms."""
 
-    normalized_query = " ".join(re.split(r"\s+", str(query or "").strip().lower()))
-    normalized_amenity = " ".join(re.split(r"\s+", str(amenity or "").strip().lower()))
-
-    def normalize_text(value: object) -> str:
-        if value is None:
-            return ""
-        return " ".join(re.split(r"\s+", str(value).strip().lower()))
-
-    def normalize_amenities(raw_amenities: object) -> list[str]:
-        if isinstance(raw_amenities, list):
-            return [str(item) for item in raw_amenities if item is not None]
-        if raw_amenities is None:
-            return []
-        return [str(raw_amenities)]
-
-    def unit_matches_text_filters(unit: dict) -> bool:
-        accommodation = unit.get("properties")
-        if not isinstance(accommodation, dict):
-            accommodation = {}
-
-        amenities_list = normalize_amenities(unit.get("amenities"))
-        amenities_blob = normalize_text(" ".join(amenities_list))
-        searchable_blob = normalize_text(
-            " ".join(
-                [
-                    str(unit.get("name") or ""),
-                    str(unit.get("description") or ""),
-                    str(unit.get("type") or ""),
-                    str(accommodation.get("name") or ""),
-                    str(accommodation.get("city") or ""),
-                    str(accommodation.get("state") or ""),
-                    str(accommodation.get("country") or ""),
-                    " ".join(amenities_list),
-                ]
-            )
-        )
-
-        if normalized_query:
-            query_terms = [t for t in normalized_query.split() if len(t) > 2]
-            if not query_terms:
-                query_terms = normalized_query.split()
-            if not any(term in searchable_blob for term in query_terms):
-                return False
-
-        if normalized_amenity and normalized_amenity not in amenities_blob:
-            return False
-        return True
-
-    def unit_matches_amenity_filter(unit: dict) -> bool:
-        if not normalized_amenity:
-            return True
-        amenities_list = normalize_amenities(unit.get("amenities"))
-        amenities_blob = normalize_text(" ".join(amenities_list))
-        return normalized_amenity in amenities_blob
-
-    def _row_to_unit(row):
-        """Convert a flat SQL row into the nested dict structure expected downstream."""
-        d = dict(row)
-        d["properties"] = {
-            "city": d.pop("p_city", None),
-            "state": d.pop("p_state", None),
-            "country": d.pop("p_country", None),
-            "rating": d.pop("p_rating", None),
-            "image_url": d.pop("p_image_url", None),
-            "lat": d.pop("p_lat", None),
-            "lng": d.pop("p_lng", None),
-            "name": d.pop("p_name", None),
-        }
-        return d
-
-    def run_room_query(include_country: bool):
-        conditions = []
-        params = []
-        account_pids = get_account_property_ids()
-
-        if hotel_name:
-            conditions.append("(p.description ILIKE %s OR p.city ILIKE %s)")
-            params.extend([f"%{hotel_name}%", f"%{hotel_name}%"])
-        if city:
-            conditions.append("p.city ILIKE %s")
-            params.append(f"%{city}%")
-        if include_country and country:
-            conditions.append("p.country ILIKE %s")
-            params.append(f"%{country}%")
-        if unit_type:
-            conditions.append("r.type ILIKE %s")
-            params.append(f"%{unit_type}%")
-        if max_price is not None:
-            conditions.append("r.price_per_night <= %s")
-            params.append(max_price)
-        if min_guests is not None:
-            conditions.append("r.max_guests >= %s")
-            params.append(min_guests)
-        if account_pids is not None:
-            if not account_pids:
-                return []
-            scoped_pids = sorted(account_pids)
-            placeholders = ", ".join(["%s"] * len(scoped_pids))
-            conditions.append(f"r.property_id IN ({placeholders})")
-            params.extend(scoped_pids)
-
-        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-        sql = f"""
-            SELECT r.*,
-                   p.city AS p_city, p.state AS p_state, p.country AS p_country,
-                   p.rating AS p_rating, p.image_url AS p_image_url,
-                   p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name
-            FROM rooms r
-            JOIN properties p ON r.property_id = p.id
-            {where}
-        """
-        rows = fetch_all(sql, params or None)
-        return [_row_to_unit(r) for r in rows]
-
-    sql_results = run_room_query(include_country=True)
-    units = [u for u in sql_results if unit_matches_text_filters(u)]
-    if not units and sql_results and normalized_query:
-        units = [u for u in sql_results if unit_matches_amenity_filter(u)]
-    relaxed_country_filter = False
-
-    # If city+country yields nothing, retry city-only for region ambiguities
-    if not units and city and country:
-        relaxed_sql = run_room_query(include_country=False)
-        relaxed_units = [u for u in relaxed_sql if unit_matches_text_filters(u)]
-        if not relaxed_units and relaxed_sql and normalized_query:
-            relaxed_units = [u for u in relaxed_sql if unit_matches_amenity_filter(u)]
-        if relaxed_units:
-            units = relaxed_units
-            relaxed_country_filter = True
+    units, relaxed_country_filter = _search_room_candidates(
+        hotel_name=hotel_name,
+        city=city,
+        country=country,
+        unit_type=unit_type,
+        max_price=max_price,
+        min_guests=min_guests,
+        amenity=amenity,
+        query=query,
+        require_coordinates=False,
+    )
 
     if not show_occupied and units:
         today = date.today().isoformat()
@@ -1354,7 +1396,7 @@ def search_rooms(
         if not isinstance(accommodation, dict):
             accommodation = {}
 
-        amenities_list = normalize_amenities(u.get("amenities"))
+        amenities_list = _normalize_search_amenities(u.get("amenities"))
         images = u.get("images")
         if not isinstance(images, list):
             images = [str(images)] if images else []
