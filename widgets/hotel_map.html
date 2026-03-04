@@ -138,14 +138,14 @@
 
     .inline-cards {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       position: absolute;
       left: 0;
       right: 0;
       bottom: 0;
       z-index: 4;
       overflow-x: auto;
-      padding: 6px 14px 16px;
+      padding: 4px 14px 12px;
       scroll-snap-type: x mandatory;
       pointer-events: none;
     }
@@ -178,8 +178,17 @@
     }
 
     .inline-cards .property-card {
-      min-width: 240px;
-      max-width: 280px;
+      min-width: 540px;
+      max-width: 620px;
+      display: grid;
+      grid-template-columns: 176px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+      padding: 12px;
+      border-radius: 38px;
+      background: #f3f4f6;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
     }
 
     .property-card:hover {
@@ -192,6 +201,11 @@
       /*box-shadow: 0 0 0 1px #111827, 0 16px 32px rgba(15, 23, 42, 0.14);*/
     }
 
+    .inline-cards .property-card.card-active {
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.15);
+    }
+
     .property-photo-wrap {
       position: relative;
       height: 160px;
@@ -200,7 +214,92 @@
     }
 
     .inline-cards .property-photo-wrap {
-      height: 148px;
+      height: 100%;
+      min-height: 176px;
+      border-radius: 26px;
+    }
+
+    .inline-cards .property-body {
+      padding: 4px 6px 6px 0;
+      gap: 12px;
+      align-content: center;
+    }
+
+    .inline-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .inline-from-price {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .inline-brand-token {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+
+    .inline-brand-token img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .inline-brand-fallback {
+      font-size: 16px;
+      font-weight: 900;
+      color: #334155;
+    }
+
+    .inline-hotel-class-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #6b7280;
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .inline-hotel-stars {
+      color: #9ca3af;
+      font-size: 14px;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      font-weight: 600;
+    }
+
+    .inline-cards .property-name {
+      font-size: 15px;
+      line-height: 1.06;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #141a24;
+    }
+
+    .inline-cards .property-meta {
+      font-size: 12px;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      color: #4b5563;
+      font-weight: 500;
     }
 
     .property-photo {
@@ -639,11 +738,91 @@
       .detail-panel {
         width: min(340px, calc(100% - 18px));
       }
+
+      .inline-cards .property-card {
+        min-width: 470px;
+        max-width: 530px;
+        grid-template-columns: 150px minmax(0, 1fr);
+      }
+
+      .inline-cards .property-photo-wrap {
+        min-height: 150px;
+      }
+
+      .inline-from-price {
+        font-size: 20px;
+      }
+
+      .inline-hotel-class-row {
+        font-size: 16px;
+      }
+
+      .inline-hotel-stars {
+        font-size: 13px;
+      }
+
+      .inline-cards .property-name {
+        font-size: 15px;
+      }
+
+      .inline-cards .property-meta {
+        font-size: 12px;
+      }
     }
 
     @media (max-width: 760px) {
       .map-inline-shell {
         height: 520px;
+      }
+
+      .inline-cards .property-card {
+        min-width: 332px;
+        max-width: 372px;
+        grid-template-columns: 112px minmax(0, 1fr);
+        border-radius: 24px;
+        gap: 10px;
+        padding: 8px;
+      }
+
+      .inline-cards .property-photo-wrap {
+        min-height: 112px;
+        border-radius: 18px;
+      }
+
+      .inline-cards .property-body {
+        gap: 8px;
+        padding: 2px 4px 2px 0;
+      }
+
+      .inline-from-price {
+        font-size: 16px;
+      }
+
+      .inline-brand-token {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+      }
+
+      .inline-brand-fallback {
+        font-size: 12px;
+      }
+
+      .inline-hotel-class-row {
+        font-size: 13px;
+        gap: 6px;
+      }
+
+      .inline-hotel-stars {
+        font-size: 11px;
+      }
+
+      .inline-cards .property-name {
+        font-size: 14px;
+      }
+
+      .inline-cards .property-meta {
+        font-size: 11px;
       }
 
       .fullscreen-overlay {
@@ -755,6 +934,11 @@
       return `Hotel ${cls} ✩✩`;
     }
 
+    function hotelClassNumber(value) {
+      const rating = Number(value);
+      return Number.isFinite(rating) ? Math.max(1, Math.min(5, Math.round(rating))) : 4;
+    }
+
     function formatAddress(property) {
       return [property.street, property.city, property.state, property.country].filter(Boolean).join(', ');
     }
@@ -773,6 +957,36 @@
       const photoUrl = sanitizeUrl(property.room_image || property.image_url || '');
       const fallbackLabel = escapeHtml((property.name || 'Hotel').slice(0, 1).toUpperCase());
       const cityLine = [property.city, property.country].filter(Boolean).join(', ');
+      const classNumber = hotelClassNumber(property.rating);
+      const logoUrl = sanitizeUrl(property.brand_logo_url || property.logo_url || property.chain_logo_url || '');
+
+      if (layout === 'inline') {
+        return `
+          <article class="property-card" data-property-id="${escapeHtml(property.id)}">
+            <div class="property-photo-wrap">
+              ${photoUrl
+            ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" />`
+            : `<div class="property-photo" style="display:grid;place-items:center;font-size:42px;font-weight:900;color:#64748b;">${fallbackLabel}</div>`}
+            </div>
+            <div class="property-body">
+              <div class="inline-top-row">
+                <p class="inline-from-price">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</p>
+                <span class="inline-brand-token" aria-hidden="true">
+                  ${logoUrl
+            ? `<img src="${logoUrl}" alt="" />`
+            : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
+                </span>
+              </div>
+              <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
+              <div class="inline-hotel-class-row">
+                <span>Hotel ${escapeHtml(String(classNumber))}</span>
+                <span class="inline-hotel-stars" aria-hidden="true">✩✩</span>
+              </div>
+              <div class="property-meta">${escapeHtml(cityLine || 'Location unavailable')}</div>
+            </div>
+          </article>
+        `;
+      }
 
       return `
         <article class="property-card ${layout === 'fullscreen' ? 'property-card-fullscreen' : ''}" data-property-id="${escapeHtml(property.id)}">
