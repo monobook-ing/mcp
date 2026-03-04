@@ -24,6 +24,7 @@ load_dotenv()
 
 from fastmcp import FastMCP
 
+from account_context import get_account_property_ids, require_property_ownership
 from db import fetch_all, fetch_one, execute, execute_returning
 
 try:
@@ -51,9 +52,28 @@ def load_widget(name: str) -> str:
 
 
 def create_app():
-    app = mcp.http_app(stateless_http=True)
-    app.mount("/widgets", StaticFiles(directory=str(WIDGETS_DIR)), name="widgets")
-    return app
+    mcp_app = mcp.http_app(stateless_http=True)
+    mcp_app.mount("/widgets", StaticFiles(directory=str(WIDGETS_DIR)), name="widgets")
+
+    try:
+        from starlette.applications import Starlette
+        from starlette.middleware import Middleware
+        from starlette.routing import Mount
+        from account_middleware import AccountGatewayMiddleware
+    except (ImportError, AttributeError):
+        return mcp_app
+
+    outer = Starlette(
+        routes=[
+            Mount(
+                "/v1/{account_id}",
+                app=mcp_app,
+                middleware=[Middleware(AccountGatewayMiddleware)],
+            ),
+            Mount("/", app=mcp_app),
+        ]
+    )
+    return outer
 
 
 app = create_app()
@@ -235,10 +255,13 @@ def _resolve_property_id(property_id: str, room_id: str) -> str:
         )
         if not room or not room.get("property_id"):
             raise ValueError("room_id not found")
-        return str(room["property_id"])
+        resolved_id = str(room["property_id"])
+        require_property_ownership(resolved_id)
+        return resolved_id
 
     normalized_property_id = str(property_id or "").strip()
     if normalized_property_id:
+        require_property_ownership(normalized_property_id)
         return normalized_property_id
 
     raise ValueError("Either property_id or room_id is required.")
@@ -792,6 +815,7 @@ def search_hotels(
 
     conditions = []
     params = []
+    account_pids = get_account_property_ids()
 
     if hotel_name:
         conditions.append("a.name ILIKE %s")
@@ -808,6 +832,13 @@ def search_hotels(
         params.extend([lat - delta, lat + delta])
         conditions.append("p.lng >= %s AND p.lng <= %s")
         params.extend([lng - delta, lng + delta])
+    if account_pids is not None:
+        if not account_pids:
+            return {"hotels": [], "count": 0}
+        scoped_pids = sorted(account_pids)
+        placeholders = ", ".join(["%s"] * len(scoped_pids))
+        conditions.append(f"p.id IN ({placeholders})")
+        params.extend(scoped_pids)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     sql = (
@@ -955,6 +986,7 @@ def search_rooms(
     def run_room_query(include_country: bool):
         conditions = []
         params = []
+        account_pids = get_account_property_ids()
 
         if hotel_name:
             conditions.append("(p.description ILIKE %s OR p.city ILIKE %s)")
@@ -974,6 +1006,13 @@ def search_rooms(
         if min_guests is not None:
             conditions.append("r.max_guests >= %s")
             params.append(min_guests)
+        if account_pids is not None:
+            if not account_pids:
+                return []
+            scoped_pids = sorted(account_pids)
+            placeholders = ", ".join(["%s"] * len(scoped_pids))
+            conditions.append(f"r.property_id IN ({placeholders})")
+            params.extend(scoped_pids)
 
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         sql = f"""
@@ -1396,6 +1435,7 @@ def book(
         row = fetch_one(sql, [unit_id])
         if row:
             unit = _row_to_unit(row)
+            require_property_ownership(str(unit["property_id"]))
     else:
         lookup_name = (unit_name or unit_id).strip()
         if not lookup_name:
@@ -1415,6 +1455,7 @@ def book(
                 + (f" at hotel '{hotel_name}'." if hotel_name else ".")
             )
         unit = _row_to_unit(rows[0])
+        require_property_ownership(str(unit["property_id"]))
 
     check_in_date = check_in
     check_out_date = check_out
@@ -1542,6 +1583,7 @@ def book_confirm(
         raise ValueError(f"Unable to find unit with id '{unit_id}'")
     
     unit = _row_to_unit(row)
+    require_property_ownership(str(unit["property_id"]))
     
     if unit_name and unit_name.strip() != unit["name"]:
         raise ValueError(
@@ -1749,6 +1791,7 @@ def room_gallery(
         row = fetch_one(base_sql + " WHERE r.id = %s", [room_id])
         if row:
             unit = _row_to_unit(row)
+            require_property_ownership(str(unit["property_id"]))
     else:
         lookup_name = (room_name or room_id).strip()
         if not lookup_name:
@@ -1759,6 +1802,7 @@ def room_gallery(
         if not rows:
             raise ValueError(f"Unable to find room '{lookup_name}'.")
         unit = _row_to_unit(rows[0])
+        require_property_ownership(str(unit["property_id"]))
 
     images = unit.get("images")
     if not isinstance(images, list):
@@ -3265,6 +3309,7 @@ async def ping_options(request: Request):
 
 
 app.routes.insert(0, Route("/ping", endpoint=ping_get, methods=["GET", "HEAD", "OPTIONS"]))
+app.routes.insert(0, Route("/v1/{account_id}/ping", endpoint=ping_get, methods=["GET", "HEAD", "OPTIONS"]))
 
 
 # ── Entry point ────────────────────────────────────────────────────────────
