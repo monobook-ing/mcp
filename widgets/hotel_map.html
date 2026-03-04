@@ -671,6 +671,7 @@
       mapsApiKey: '',
       map: null,
       mapLoadPromise: null,
+      hasInitialAutoFit: false,
       markers: new Map(),
       selectedPropertyId: '',
       mode: 'inline',
@@ -882,6 +883,7 @@
     }
 
     function fitMapToMarkers() {
+      if (STATE.hasInitialAutoFit) return;
       if (!STATE.map || !STATE.markers.size || !window.google || !google.maps) return;
       const maxCityZoom = 13;
 
@@ -894,6 +896,7 @@
       if (positions.length === 1) {
         STATE.map.setCenter(positions[0]);
         STATE.map.setZoom(maxCityZoom);
+        STATE.hasInitialAutoFit = true;
         return;
       }
 
@@ -905,6 +908,7 @@
         if (Number.isFinite(zoom) && zoom > maxCityZoom) {
           STATE.map.setZoom(maxCityZoom);
         }
+        STATE.hasInitialAutoFit = true;
       });
     }
 
@@ -963,7 +967,9 @@
       });
 
       updatePinStates();
-      fitMapToMarkers();
+      if (!STATE.hasInitialAutoFit) {
+        fitMapToMarkers();
+      }
     }
 
     function setMapStatus(text, hidden) {
@@ -1239,16 +1245,11 @@
       }
     }
 
-    function triggerMapResize(refit) {
+    function triggerMapResize() {
       if (!STATE.map || !window.google || !google.maps) return;
 
       setTimeout(() => {
         google.maps.event.trigger(STATE.map, 'resize');
-        if (refit) {
-          fitMapToMarkers();
-          return;
-        }
-
         const markerInfo = STATE.markers.get(STATE.selectedPropertyId);
         if (markerInfo && markerInfo.position) {
           STATE.map.panTo(markerInfo.position);
@@ -1296,7 +1297,7 @@
 
       const fullscreenMapSlot = overlay.querySelector('#fullscreenMapSlot');
       moveMapCanvas(fullscreenMapSlot);
-      triggerMapResize(false);
+      triggerMapResize();
 
       if (STATE.selectedPropertyId) {
         scrollCardIntoView(STATE.selectedPropertyId);
@@ -1318,7 +1319,7 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
 
-      triggerMapResize(true);
+      triggerMapResize();
       sendHeight();
     }
 
@@ -1489,7 +1490,7 @@
     window.addEventListener('resize', () => {
       if (STATE.mode === 'fullscreen') {
         sendHeight(window.innerHeight);
-        triggerMapResize(false);
+        triggerMapResize();
         return;
       }
       sendHeight();
