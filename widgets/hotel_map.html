@@ -166,11 +166,16 @@
       max-width: 300px;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      border: 1px solid rgba(15, 23, 42, 0.08);
+      /*border: 1px solid rgba(15, 23, 42, 0.08);*/
       background: var(--white);
       box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .inline-cards .property-card {
+      min-width: 240px;
+      max-width: 280px;
     }
 
     .property-card:hover {
@@ -180,7 +185,7 @@
 
     .property-card.card-active {
       border-color: #111827;
-      box-shadow: 0 0 0 1px #111827, 0 16px 32px rgba(15, 23, 42, 0.14);
+      /*box-shadow: 0 0 0 1px #111827, 0 16px 32px rgba(15, 23, 42, 0.14);*/
     }
 
     .property-photo-wrap {
@@ -188,6 +193,10 @@
       height: 160px;
       background: linear-gradient(135deg, #e2e8f0, #f8fafc);
       overflow: hidden;
+    }
+
+    .inline-cards .property-photo-wrap {
+      height: 148px;
     }
 
     .property-photo {
@@ -874,6 +883,7 @@
 
     function fitMapToMarkers() {
       if (!STATE.map || !STATE.markers.size || !window.google || !google.maps) return;
+      const maxCityZoom = 13;
 
       const positions = [];
       for (const markerInfo of STATE.markers.values()) {
@@ -883,13 +893,19 @@
       if (!positions.length) return;
       if (positions.length === 1) {
         STATE.map.setCenter(positions[0]);
-        STATE.map.setZoom(13);
+        STATE.map.setZoom(maxCityZoom);
         return;
       }
 
       const bounds = new google.maps.LatLngBounds();
       positions.forEach((pos) => bounds.extend(pos));
       STATE.map.fitBounds(bounds, 50);
+      google.maps.event.addListenerOnce(STATE.map, 'idle', () => {
+        const zoom = STATE.map.getZoom();
+        if (Number.isFinite(zoom) && zoom > maxCityZoom) {
+          STATE.map.setZoom(maxCityZoom);
+        }
+      });
     }
 
     function updatePinStates() {
@@ -999,7 +1015,7 @@
             STATE.map = new google.maps.Map(mapCanvas, {
               mapId: 'DEMO_MAP_ID',
               disableDefaultUI: true,
-              zoomControl: true,
+              zoomControl: false,
               gestureHandling: 'greedy',
             });
             setMapStatus('Map ready', true);
