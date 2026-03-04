@@ -55,6 +55,10 @@
       border: 1px solid rgba(17, 24, 39, 0.08);
     }
 
+    .map-inline-shell-hidden {
+      display: none;
+    }
+
     .map-inline-shell::after {
       content: "";
       position: absolute;
@@ -353,6 +357,16 @@
       background: #fff;
       display: grid;
       grid-template-columns: 380px 1fr;
+    }
+
+    .fullscreen-overlay-embedded {
+      position: relative;
+      inset: auto;
+      z-index: 1;
+      width: 100%;
+      min-height: 100vh;
+      height: 100vh;
+      height: 100dvh;
     }
 
     .fullscreen-sidebar {
@@ -681,11 +695,17 @@
       detailIndex: 0,
       hydrationTimeoutId: null,
       hydrationPollId: null,
+      fullscreenSource: 'none',
+      overlayRequestId: '',
+      overlayAction: '',
+      parentExpandAckTimeoutId: null,
     };
 
     const HYDRATION_TIMEOUT_MS = 5000;
     const HYDRATION_POLL_MS = 250;
     const HYDRATION_MAX_POLLS = 20;
+    const PARENT_EXPAND_ACK_TIMEOUT_MS = 180;
+    const FULLSCREEN_WIDGET_NAME = 'hotel_map';
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1263,12 +1283,41 @@
       renderDetailPanel();
     }
 
-    function openFullscreen() {
-      if (STATE.fullscreenOverlay) return;
+    function createOverlayRequestId(action) {
+      return `${action}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
 
+    function postOverlayMessage(type, requestId) {
+      window.parent.postMessage({
+        type,
+        widget: FULLSCREEN_WIDGET_NAME,
+        requestId,
+        ts: Date.now(),
+      }, '*');
+    }
+
+    function clearParentExpandAckTimeout() {
+      if (!STATE.parentExpandAckTimeoutId) return;
+      clearTimeout(STATE.parentExpandAckTimeoutId);
+      STATE.parentExpandAckTimeoutId = null;
+    }
+
+    function clearOverlayRequestState() {
+      clearParentExpandAckTimeout();
+      STATE.overlayAction = '';
+      STATE.overlayRequestId = '';
+    }
+
+    function setInlineShellHidden(hidden) {
+      const inlineMapShell = document.getElementById('inlineMapShell');
+      if (!inlineMapShell) return;
+      inlineMapShell.classList.toggle('map-inline-shell-hidden', !!hidden);
+    }
+
+    function buildFullscreenOverlayElement(className) {
       const overlay = document.createElement('div');
       overlay.id = 'fullscreenOverlay';
-      overlay.className = 'fullscreen-overlay';
+      overlay.className = className;
       overlay.innerHTML = `
         <aside class="fullscreen-sidebar">
           <div class="fullscreen-header">
@@ -1285,10 +1334,13 @@
           <div id="detailPanel" class="detail-panel"></div>
         </section>
       `;
+      return overlay;
+    }
 
-      document.body.appendChild(overlay);
+    function activateFullscreenOverlay(overlay, source) {
       STATE.fullscreenOverlay = overlay;
       STATE.mode = 'fullscreen';
+      STATE.fullscreenSource = source;
 
       const closeBtn = overlay.querySelector('#fullscreenClose');
       if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
@@ -1306,8 +1358,50 @@
       sendHeight(window.innerHeight);
     }
 
-    function closeFullscreen() {
-      if (!STATE.fullscreenOverlay) return;
+    function openFullscreenParentMode() {
+      if (STATE.fullscreenSource === 'parent' && STATE.fullscreenOverlay) return;
+
+      if (STATE.fullscreenSource === 'iframe' && STATE.fullscreenOverlay) {
+        closeFullscreenIframeFallback();
+      }
+
+      const overlay = buildFullscreenOverlayElement('fullscreen-overlay fullscreen-overlay-embedded');
+      setInlineShellHidden(true);
+      document.body.appendChild(overlay);
+      activateFullscreenOverlay(overlay, 'parent');
+    }
+
+    function openFullscreenIframeFallback() {
+      if (STATE.fullscreenOverlay) return;
+      const overlay = buildFullscreenOverlayElement('fullscreen-overlay');
+      document.body.appendChild(overlay);
+      activateFullscreenOverlay(overlay, 'iframe');
+    }
+
+    function requestParentExpand() {
+      const requestId = createOverlayRequestId('expand');
+      STATE.overlayAction = 'expand';
+      STATE.overlayRequestId = requestId;
+      clearParentExpandAckTimeout();
+      postOverlayMessage('widget:expand', requestId);
+
+      STATE.parentExpandAckTimeoutId = setTimeout(() => {
+        if (STATE.overlayAction !== 'expand') return;
+        if (STATE.overlayRequestId !== requestId) return;
+
+        clearOverlayRequestState();
+        if (STATE.mode === 'fullscreen') return;
+        openFullscreenIframeFallback();
+      }, PARENT_EXPAND_ACK_TIMEOUT_MS);
+    }
+
+    function openFullscreen() {
+      if (STATE.mode === 'fullscreen') return;
+      requestParentExpand();
+    }
+
+    function closeFullscreenParentMode() {
+      if (STATE.fullscreenSource !== 'parent' || !STATE.fullscreenOverlay) return;
 
       closeDetailPanel();
 
@@ -1318,9 +1412,69 @@
       STATE.fullscreenOverlay.remove();
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
+      STATE.fullscreenSource = 'none';
+      setInlineShellHidden(false);
 
       triggerMapResize();
       sendHeight();
+    }
+
+    function closeFullscreenIframeFallback() {
+      if (STATE.fullscreenSource !== 'iframe' || !STATE.fullscreenOverlay) return;
+
+      closeDetailPanel();
+
+      const inlineMapShell = document.getElementById('inlineMapShell');
+      const mapStatus = document.getElementById('mapStatus');
+      moveMapCanvas(inlineMapShell, mapStatus);
+
+      STATE.fullscreenOverlay.remove();
+      STATE.fullscreenOverlay = null;
+      STATE.mode = 'inline';
+      STATE.fullscreenSource = 'none';
+      setInlineShellHidden(false);
+
+      triggerMapResize();
+      sendHeight();
+    }
+
+    function requestParentCollapse() {
+      const requestId = createOverlayRequestId('collapse');
+      STATE.overlayAction = 'collapse';
+      STATE.overlayRequestId = requestId;
+      postOverlayMessage('widget:collapse', requestId);
+    }
+
+    function closeFullscreen() {
+      if (STATE.mode !== 'fullscreen') return;
+      if (STATE.fullscreenSource === 'parent') {
+        requestParentCollapse();
+        return;
+      }
+      closeFullscreenIframeFallback();
+    }
+
+    function handleOverlayStateMessage(message) {
+      if (!message || typeof message !== 'object') return;
+      if (message.type !== 'widget:overlay-state') return;
+      if (message.widget !== FULLSCREEN_WIDGET_NAME) return;
+
+      const expanded = message.expanded === true ? true : (message.expanded === false ? false : null);
+      if (expanded === null) return;
+
+      const requestId = typeof message.requestId === 'string' ? message.requestId : '';
+      if (STATE.overlayRequestId && requestId && requestId !== STATE.overlayRequestId && expanded) {
+        return;
+      }
+
+      if (expanded) {
+        clearOverlayRequestState();
+        openFullscreenParentMode();
+        return;
+      }
+
+      clearOverlayRequestState();
+      closeFullscreenParentMode();
     }
 
     function applyPayload(payload) {
@@ -1332,6 +1486,7 @@
       STATE.mapsApiKey = String(payload.maps_api_key || '');
 
       renderShell();
+      setInlineShellHidden(STATE.mode === 'fullscreen' && STATE.fullscreenSource === 'parent');
       renderInlineCards();
 
       ensureMapReady()
@@ -1460,6 +1615,11 @@
     window.addEventListener('message', (event) => {
       const msg = event.data;
       if (!msg || typeof msg !== 'object') return;
+
+      if (msg.type === 'widget:overlay-state') {
+        handleOverlayStateMessage(msg);
+        return;
+      }
 
       if (msg.jsonrpc === '2.0' && msg.method === 'ui/notifications/tool-result') {
         hydrate(msg);
