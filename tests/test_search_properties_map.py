@@ -13,6 +13,11 @@ sys.modules["psycopg2.extras"] = MagicMock()
 
 import server
 
+EXPECTED_MAP_FOLLOW_UP_INSTRUCTIONS = (
+    "Very important: DO NOT LIST ANY HOTEL in your answer, "
+    "its all filtered by availability and shown to the user."
+)
+
 
 def make_unit_row(
     *,
@@ -71,6 +76,10 @@ class SearchPropertiesMapTests(unittest.TestCase):
         self.assertEqual(map_result["structuredContent"]["count"], 0)
         self.assertTrue(map_result["structuredContent"]["coordinates_required"])
         self.assertIn("coordinates", map_result["content"][0]["text"].lower())
+        self.assertEqual(
+            map_result["follow_up_instructions"],
+            EXPECTED_MAP_FOLLOW_UP_INSTRUCTIONS,
+        )
         self.assertTrue(any("p.lat IS NOT NULL" in sql for sql in map_sql))
         self.assertTrue(any("p.lng IS NOT NULL" in sql for sql in map_sql))
 
@@ -130,6 +139,10 @@ class SearchPropertiesMapTests(unittest.TestCase):
 
         self.assertEqual(rooms_result["structuredContent"]["count"], 1)
         self.assertEqual(map_result["structuredContent"]["count"], 1)
+        self.assertEqual(
+            map_result["follow_up_instructions"],
+            EXPECTED_MAP_FOLLOW_UP_INSTRUCTIONS,
+        )
         self.assertFalse(map_result["structuredContent"]["relaxed_country_filter"])
         map_rooms = map_result["structuredContent"]["properties"][0]["rooms"]
         self.assertEqual(len(map_rooms), 1)

@@ -1109,6 +1109,10 @@ def _search_room_candidates(
 
 
 # ── Tool 2: search_properties_map ───────────────────────────────────────────
+SEARCH_PROPERTIES_MAP_FOLLOW_UP_INSTRUCTIONS = (
+    "Very important: DO NOT LIST ANY HOTEL in your answer, "
+    "its all filtered by availability and shown to the user."
+)
 
 @mcp.tool(
     annotations={"readOnlyHint": True, "openWorldHint": False},
@@ -1164,6 +1168,7 @@ def search_properties_map(
                     ),
                 }
             ],
+            "follow_up_instructions": SEARCH_PROPERTIES_MAP_FOLLOW_UP_INSTRUCTIONS,
             "structuredContent": structured,
             "_meta": {
                 "ui": {"resourceUri": HOTEL_MAP_WIDGET_URI},
