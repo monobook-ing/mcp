@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hotel Map</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --text: #101828;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --white: #fff;
+      --shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+      --radius-xl: 22px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --pin-active: #1a1a2e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #root {
+      width: 100%;
+      background: transparent;
+    }
+
+    .widget-shell {
+      width: 100%;
+      display: grid;
+      gap: 14px;
+    }
+
+    .map-inline-shell {
+      position: relative;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      height: 400px;
+      background:
+        radial-gradient(900px 480px at 92% -15%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
+        radial-gradient(700px 420px at -20% 100%, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0) 60%),
+        linear-gradient(145deg, #eff3fb 0%, #ffffff 70%);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+    }
+
+    .map-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-overlay-status {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 3;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .expand-btn {
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      z-index: 3;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #0f172a;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .expand-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.32);
+    }
+
+    .expand-btn:active {
+      transform: translateY(0);
+    }
+
+    .inline-cards {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 2px 2px 8px;
+      scroll-snap-type: x mandatory;
+    }
+
+    .inline-cards::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .inline-cards::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.2);
+      border-radius: 999px;
+    }
+
+    .property-card {
+      scroll-snap-align: start;
+      min-width: 260px;
+      max-width: 300px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: var(--white);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .property-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .property-card.card-active {
+      border-color: #111827;
+      box-shadow: 0 0 0 1px #111827, 0 16px 32px rgba(15, 23, 42, 0.14);
+    }
+
+    .property-photo-wrap {
+      position: relative;
+      height: 160px;
+      background: linear-gradient(135deg, #e2e8f0, #f8fafc);
+      overflow: hidden;
+    }
+
+    .property-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .price-badge {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      background: rgba(17, 24, 39, 0.82);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .property-body {
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .property-name {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .property-rating-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #1f2937;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .rating-stars {
+      letter-spacing: 0.02em;
+    }
+
+    .property-meta {
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hotel-class {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+    }
+
+    .empty-state,
+    #loading {
+      border: 1px dashed rgba(15, 23, 42, 0.18);
+      border-radius: var(--radius-lg);
+      padding: 28px 16px;
+      color: #475467;
+      text-align: center;
+      font-weight: 700;
+      background: #fff;
+    }
+
+    .retry-btn {
+      margin-top: 12px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.18);
+      background: #fff;
+      padding: 0 14px;
+      font-weight: 800;
+      color: #111827;
+      cursor: pointer;
+    }
+
+    .map-pin {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 4px 10px 4px 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .pin-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #e5e7eb;
+      flex: 0 0 auto;
+    }
+
+    .pin-price {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .map-pin.active {
+      background: var(--pin-active);
+      color: #fff;
+      transform: scale(1.15);
+      z-index: 10;
+      animation: pinBounce 0.3s ease forwards;
+    }
+
+    @keyframes pinBounce {
+      0% {
+        transform: scale(1);
+      }
+
+      30% {
+        transform: scale(1.2);
+      }
+
+      60% {
+        transform: scale(0.95);
+      }
+
+      100% {
+        transform: scale(1.15);
+      }
+    }
+
+    .fullscreen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #fff;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+    }
+
+    .fullscreen-sidebar {
+      border-right: 1px solid var(--line);
+      background: #fff;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .fullscreen-header {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+      background: #fff;
+    }
+
+    .close-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .fullscreen-close {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      background: #fff;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .result-count {
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .search-badge {
+      display: inline-flex;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.06);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .fullscreen-cards {
+      overflow-y: auto;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      background: #f9fafb;
+    }
+
+    .fullscreen-cards .property-card {
+      max-width: none;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .fullscreen-map-pane {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      background: #f8fafc;
+    }
+
+    .fullscreen-map-slot {
+      position: absolute;
+      inset: 0;
+    }
+
+    .detail-panel {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      bottom: 16px;
+      width: 380px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: translateX(100%);
+      transition: transform 0.24s ease;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      z-index: 4;
+    }
+
+    .detail-panel.open {
+      transform: translateX(0);
+    }
+
+    .detail-close {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 2;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(15, 23, 42, 0.55);
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .detail-carousel {
+      position: relative;
+      height: 215px;
+      background: linear-gradient(120deg, #e2e8f0, #f8fafc);
+    }
+
+    .detail-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .photo-counter {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+      background: rgba(15, 23, 42, 0.65);
+    }
+
+    .carousel-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(15, 23, 42, 0.55);
+      color: #fff;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .carousel-prev {
+      left: 8px;
+    }
+
+    .carousel-next {
+      right: 8px;
+    }
+
+    .detail-body {
+      padding: 14px 14px 16px;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .detail-title {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-meta,
+    .detail-address,
+    .detail-price-sub,
+    .detail-description {
+      margin: 0;
+      color: #475467;
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    .detail-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .detail-badge {
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+      background: rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-price {
+      font-size: 16px;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .detail-price strong {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-view-rooms {
+      width: 100%;
+      height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: #111827;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .room-preview-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .room-preview-item {
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      border-radius: 12px;
+      padding: 8px;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .room-preview-item p {
+      margin: 0;
+      font-size: 12px;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    .room-preview-item .room-price {
+      color: #111827;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .fullscreen-overlay {
+        grid-template-columns: 320px 1fr;
+      }
+
+      .detail-panel {
+        width: min(340px, calc(100% - 18px));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .map-inline-shell {
+        height: 360px;
+      }
+
+      .fullscreen-overlay {
+        grid-template-columns: 1fr;
+        grid-template-rows: 40% 60%;
+      }
+
+      .fullscreen-sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .detail-panel {
+        right: 8px;
+        left: 8px;
+        width: auto;
+        top: 8px;
+        bottom: 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <div id="loading">Loading map results...</div>
+  </div>
+
+  <script>
+    const currencySymbols = { USD: '$', UAH: '₴', EUR: '€' };
+
+    const STATE = {
+      hydrated: false,
+      properties: [],
+      propertyById: new Map(),
+      checkIn: '',
+      checkOut: '',
+      queryContext: {},
+      mapsApiKey: '',
+      map: null,
+      mapLoadPromise: null,
+      markers: new Map(),
+      selectedPropertyId: '',
+      mode: 'inline',
+      fullscreenOverlay: null,
+      detailPropertyId: '',
+      detailImages: [],
+      detailIndex: 0,
+      hydrationTimeoutId: null,
+      hydrationPollId: null,
+    };
+
+    const HYDRATION_TIMEOUT_MS = 5000;
+    const HYDRATION_POLL_MS = 250;
+    const HYDRATION_MAX_POLLS = 20;
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeUrl(raw) {
+      const value = String(raw || '').trim();
+      if (!/^https?:\/\//i.test(value)) return '';
+      return value.replace(/"/g, '%22').replace(/'/g, '%27');
+    }
+
+    function escapeSelectorValue(value) {
+      const str = String(value || '');
+      if (window.CSS && typeof window.CSS.escape === 'function') {
+        return window.CSS.escape(str);
+      }
+      return str.replace(/["\\]/g, '\\$&');
+    }
+
+    function formatPrice(amount, code) {
+      const sym = currencySymbols[code] || (code ? code + ' ' : '');
+      const value = Number(amount);
+      if (!Number.isFinite(value)) return sym + '0';
+      return sym + Math.round(value);
+    }
+
+    function formatRating(value) {
+      const rating = Number(value);
+      if (!Number.isFinite(rating)) return '4.0';
+      return rating.toFixed(1);
+    }
+
+    function getStars(value) {
+      const rating = Number(value);
+      const outOfFive = Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 4;
+      return '●'.repeat(outOfFive) + '○'.repeat(5 - outOfFive);
+    }
+
+    function hotelClass(value) {
+      const rating = Number(value);
+      const cls = Number.isFinite(rating) ? Math.max(1, Math.min(5, Math.round(rating))) : 4;
+      return `Hotel ${cls} ✩✩`;
+    }
+
+    function formatAddress(property) {
+      return [property.street, property.city, property.state, property.country].filter(Boolean).join(', ');
+    }
+
+    function buildSearchBadgeText() {
+      const ctx = STATE.queryContext || {};
+      const bits = [];
+      if (ctx.city) bits.push(ctx.city);
+      if (ctx.country) bits.push(ctx.country);
+      if (ctx.unit_type) bits.push(ctx.unit_type);
+      if (ctx.hotel_name) bits.push(ctx.hotel_name);
+      return bits.length ? `Your search: ${bits.join(' · ')}` : 'Your search';
+    }
+
+    function buildPropertyCard(property, layout) {
+      const photoUrl = sanitizeUrl(property.room_image || property.image_url || '');
+      const fallbackLabel = escapeHtml((property.name || 'Hotel').slice(0, 1).toUpperCase());
+      const cityLine = [property.city, property.country].filter(Boolean).join(', ');
+
+      return `
+        <article class="property-card ${layout === 'fullscreen' ? 'property-card-fullscreen' : ''}" data-property-id="${escapeHtml(property.id)}">
+          <div class="property-photo-wrap">
+            ${photoUrl
+          ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" />`
+          : `<div class="property-photo" style="display:grid;place-items:center;font-size:42px;font-weight:900;color:#64748b;">${fallbackLabel}</div>`}
+            <span class="price-badge">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</span>
+          </div>
+          <div class="property-body">
+            <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
+            <div class="property-rating-row">
+              <span class="rating-stars">${escapeHtml(getStars(property.rating))} ${escapeHtml(formatRating(property.rating))}</span>
+              <span class="hotel-class">${escapeHtml(hotelClass(property.rating))}</span>
+            </div>
+            <div class="property-meta">${escapeHtml(cityLine || 'Location unavailable')}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderShell() {
+      document.getElementById('root').innerHTML = `
+        <div class="widget-shell">
+          <div id="inlineMapShell" class="map-inline-shell">
+            <div id="mapCanvas" class="map-canvas" role="img" aria-label="Hotel map"></div>
+            <div id="mapStatus" class="map-overlay-status">Loading map...</div>
+            <button id="expandBtn" class="expand-btn" type="button" aria-label="Open fullscreen map">⤢</button>
+          </div>
+          <div id="inlineCards" class="inline-cards"></div>
+        </div>
+      `;
+
+      const expandBtn = document.getElementById('expandBtn');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', openFullscreen);
+      }
+    }
+
+    function renderInlineCards() {
+      const container = document.getElementById('inlineCards');
+      if (!container) return;
+
+      if (!STATE.properties.length) {
+        container.innerHTML = '<div class="empty-state" style="width:100%;">No properties found for this search.</div>';
+        return;
+      }
+
+      container.innerHTML = STATE.properties.map((property) => buildPropertyCard(property, 'inline')).join('');
+      bindCardClicks(container, 'inline');
+      updateCardStates();
+    }
+
+    function renderFullscreenCards() {
+      if (!STATE.fullscreenOverlay) return;
+
+      const cards = STATE.fullscreenOverlay.querySelector('#fullscreenCards');
+      const resultCount = STATE.fullscreenOverlay.querySelector('#fullscreenResultCount');
+      const searchBadge = STATE.fullscreenOverlay.querySelector('#fullscreenSearchBadge');
+
+      if (resultCount) resultCount.textContent = `${STATE.properties.length} result${STATE.properties.length === 1 ? '' : 's'}`;
+      if (searchBadge) searchBadge.textContent = buildSearchBadgeText();
+
+      if (!cards) return;
+
+      if (!STATE.properties.length) {
+        cards.innerHTML = '<div class="empty-state">No properties found.</div>';
+        return;
+      }
+
+      cards.innerHTML = STATE.properties.map((property) => buildPropertyCard(property, 'fullscreen')).join('');
+      bindCardClicks(cards, 'fullscreen');
+      updateCardStates();
+    }
+
+    function bindCardClicks(container, mode) {
+      container.querySelectorAll('.property-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const propertyId = card.dataset.propertyId || '';
+          if (!propertyId) return;
+          selectProperty(propertyId, 'card', mode);
+        });
+      });
+    }
+
+    function updateCardStates() {
+      document.querySelectorAll('.property-card').forEach((card) => {
+        card.classList.toggle('card-active', card.dataset.propertyId === STATE.selectedPropertyId);
+      });
+    }
+
+    function createPinElement(property) {
+      const pin = document.createElement('div');
+      pin.className = 'map-pin';
+      pin.dataset.propertyId = String(property.id || '');
+
+      const img = document.createElement('img');
+      img.className = 'pin-logo';
+      img.src = sanitizeUrl(property.image_url || property.room_image || '') || '';
+      img.alt = '';
+      img.onerror = () => {
+        img.style.visibility = 'hidden';
+      };
+
+      const price = document.createElement('span');
+      price.className = 'pin-price';
+      price.textContent = formatPrice(property.min_price, property.currency_code);
+
+      pin.appendChild(img);
+      pin.appendChild(price);
+      pin.addEventListener('click', () => selectProperty(String(property.id), 'pin', STATE.mode));
+      return pin;
+    }
+
+    function clearMarkers() {
+      for (const markerInfo of STATE.markers.values()) {
+        if (markerInfo.advanced) {
+          markerInfo.marker.map = null;
+        } else {
+          markerInfo.marker.setMap(null);
+        }
+      }
+      STATE.markers.clear();
+    }
+
+    function fitMapToMarkers() {
+      if (!STATE.map || !STATE.markers.size || !window.google || !google.maps) return;
+
+      const positions = [];
+      for (const markerInfo of STATE.markers.values()) {
+        if (markerInfo.position) positions.push(markerInfo.position);
+      }
+
+      if (!positions.length) return;
+      if (positions.length === 1) {
+        STATE.map.setCenter(positions[0]);
+        STATE.map.setZoom(13);
+        return;
+      }
+
+      const bounds = new google.maps.LatLngBounds();
+      positions.forEach((pos) => bounds.extend(pos));
+      STATE.map.fitBounds(bounds, 50);
+    }
+
+    function updatePinStates() {
+      for (const [propertyId, markerInfo] of STATE.markers.entries()) {
+        if (markerInfo.pinEl) {
+          markerInfo.pinEl.classList.toggle('active', propertyId === STATE.selectedPropertyId);
+        }
+      }
+    }
+
+    function createMarkers() {
+      if (!STATE.map || !window.google || !google.maps) return;
+      clearMarkers();
+
+      const supportsAdvanced = !!(google.maps.marker && google.maps.marker.AdvancedMarkerElement);
+
+      STATE.properties.forEach((property) => {
+        const lat = Number(property.lat);
+        const lng = Number(property.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        const position = { lat, lng };
+        const propertyId = String(property.id || '');
+
+        if (supportsAdvanced) {
+          const pinEl = createPinElement(property);
+          const marker = new google.maps.marker.AdvancedMarkerElement({
+            map: STATE.map,
+            position,
+            content: pinEl,
+            title: property.name || 'Hotel',
+          });
+
+          if (typeof marker.addListener === 'function') {
+            marker.addListener('click', () => selectProperty(propertyId, 'pin', STATE.mode));
+          }
+
+          STATE.markers.set(propertyId, { marker, pinEl, position, advanced: true });
+          return;
+        }
+
+        const marker = new google.maps.Marker({
+          map: STATE.map,
+          position,
+          title: property.name || 'Hotel',
+          label: {
+            text: formatPrice(property.min_price, property.currency_code),
+            color: '#111827',
+            fontWeight: '700',
+            fontSize: '12px',
+          },
+        });
+        marker.addListener('click', () => selectProperty(propertyId, 'pin', STATE.mode));
+        STATE.markers.set(propertyId, { marker, pinEl: null, position, advanced: false });
+      });
+
+      updatePinStates();
+      fitMapToMarkers();
+    }
+
+    function setMapStatus(text, hidden) {
+      const status = document.getElementById('mapStatus');
+      if (!status) return;
+      status.textContent = text;
+      status.classList.toggle('hidden', !!hidden);
+    }
+
+    function loadGoogleMaps(apiKey) {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.maps) {
+          resolve();
+          return;
+        }
+
+        const existing = document.querySelector('script[data-google-maps="hotel-map"]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps script.')), { once: true });
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.dataset.googleMaps = 'hotel-map';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker&v=beta`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Google Maps script.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function ensureMapReady() {
+      if (STATE.map) return;
+
+      if (!STATE.mapsApiKey) {
+        setMapStatus('Map unavailable (missing API key).', false);
+        return;
+      }
+
+      if (!STATE.mapLoadPromise) {
+        STATE.mapLoadPromise = loadGoogleMaps(STATE.mapsApiKey)
+          .then(() => {
+            const mapCanvas = document.getElementById('mapCanvas');
+            if (!mapCanvas) throw new Error('Map container missing.');
+
+            STATE.map = new google.maps.Map(mapCanvas, {
+              mapId: 'DEMO_MAP_ID',
+              disableDefaultUI: true,
+              zoomControl: true,
+              gestureHandling: 'greedy',
+            });
+            setMapStatus('Map ready', true);
+          })
+          .catch((err) => {
+            setMapStatus('Failed to load map.', false);
+            throw err;
+          });
+      }
+
+      await STATE.mapLoadPromise;
+    }
+
+    function scrollCardIntoView(propertyId) {
+      if (!propertyId) return;
+      const safeId = escapeSelectorValue(propertyId);
+
+      if (STATE.mode === 'fullscreen' && STATE.fullscreenOverlay) {
+        const card = STATE.fullscreenOverlay.querySelector(`#fullscreenCards .property-card[data-property-id="${safeId}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+
+      const card = document.querySelector(`#inlineCards .property-card[data-property-id="${safeId}"]`);
+      if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    function selectProperty(propertyId, source, contextMode) {
+      if (!STATE.propertyById.has(propertyId)) return;
+
+      STATE.selectedPropertyId = propertyId;
+      updateCardStates();
+      updatePinStates();
+
+      const markerInfo = STATE.markers.get(propertyId);
+      if (STATE.map && markerInfo && markerInfo.position) {
+        STATE.map.panTo(markerInfo.position);
+      }
+
+      if (source === 'pin') {
+        scrollCardIntoView(propertyId);
+      }
+
+      if (contextMode === 'fullscreen') {
+        openDetailPanel(propertyId);
+      }
+
+      sendHeight(STATE.mode === 'fullscreen' ? window.innerHeight : undefined);
+    }
+
+    function collectDetailImages(property) {
+      const urls = [];
+      const addUrl = (raw) => {
+        const clean = sanitizeUrl(raw);
+        if (clean && !urls.includes(clean)) urls.push(clean);
+      };
+
+      addUrl(property.image_url);
+      addUrl(property.room_image);
+      (property.rooms || []).forEach((room) => addUrl(room.image_url));
+
+      return urls;
+    }
+
+    function buildRoomPreview(property) {
+      const rooms = Array.isArray(property.rooms) ? property.rooms : [];
+      if (!rooms.length) {
+        return '<p class="detail-description">No room previews available.</p>';
+      }
+
+      return `
+        <div class="room-preview-list">
+          ${rooms.slice(0, 3).map((room) => `
+            <div class="room-preview-item">
+              <div>
+                <p>${escapeHtml(room.name || room.type || 'Room')}</p>
+                <p>${escapeHtml(room.type || '')} ${room.max_guests ? `· ${escapeHtml(String(room.max_guests))} guests` : ''}</p>
+              </div>
+              <span class="room-price">${escapeHtml(formatPrice(room.price_per_night, room.currency_code || property.currency_code))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderDetailPanel() {
+      if (!STATE.fullscreenOverlay) return;
+      const panel = STATE.fullscreenOverlay.querySelector('#detailPanel');
+      if (!panel) return;
+
+      if (!STATE.detailPropertyId || !STATE.propertyById.has(STATE.detailPropertyId)) {
+        panel.classList.remove('open');
+        panel.innerHTML = '';
+        return;
+      }
+
+      const property = STATE.propertyById.get(STATE.detailPropertyId);
+      STATE.detailImages = collectDetailImages(property);
+      STATE.detailIndex = 0;
+
+      panel.innerHTML = `
+        <button class="detail-close" type="button" aria-label="Close details">✕</button>
+        <div class="detail-carousel">
+          <img id="detailPhoto" src="" class="detail-photo" alt="${escapeHtml(property.name || 'Hotel image')}" />
+          <span id="detailCounter" class="photo-counter"></span>
+          <button class="carousel-nav carousel-prev" type="button" aria-label="Previous photo">‹</button>
+          <button class="carousel-nav carousel-next" type="button" aria-label="Next photo">›</button>
+        </div>
+        <div class="detail-body">
+          <h2 class="detail-title">${escapeHtml(property.name || 'Hotel')}</h2>
+          <p class="detail-meta">${escapeHtml(hotelClass(property.rating))} | ${escapeHtml(getStars(property.rating))} ${escapeHtml(formatRating(property.rating))}/5</p>
+          <p class="detail-address">📍 ${escapeHtml(formatAddress(property) || 'Address unavailable')}</p>
+          <div class="detail-badges">
+            <span class="detail-badge">Member rate</span>
+            <span class="detail-badge">Breakfast included</span>
+          </div>
+          <div class="detail-price">From <strong>${escapeHtml(formatPrice(property.min_price, property.currency_code))}</strong></div>
+          <p class="detail-price-sub">2 adults | per stay | Taxes included</p>
+          <button class="detail-view-rooms" type="button" data-property-id="${escapeHtml(property.id)}">View rooms</button>
+          <p class="detail-description">${escapeHtml((property.name || 'This hotel') + ' offers convenient access to city highlights and comfortable stays.')}</p>
+          ${buildRoomPreview(property)}
+        </div>
+      `;
+
+      panel.classList.add('open');
+      bindDetailPanelActions(panel);
+      updateDetailPhoto();
+    }
+
+    function updateDetailPhoto() {
+      if (!STATE.fullscreenOverlay) return;
+      const panel = STATE.fullscreenOverlay.querySelector('#detailPanel');
+      if (!panel || !panel.classList.contains('open')) return;
+
+      const photo = panel.querySelector('#detailPhoto');
+      const counter = panel.querySelector('#detailCounter');
+
+      if (!photo || !counter) return;
+
+      if (!STATE.detailImages.length) {
+        photo.src = '';
+        photo.alt = 'No image available';
+        counter.textContent = '0/0';
+        return;
+      }
+
+      const safeIndex = Math.max(0, Math.min(STATE.detailImages.length - 1, STATE.detailIndex));
+      STATE.detailIndex = safeIndex;
+      photo.src = STATE.detailImages[safeIndex];
+      counter.textContent = `${safeIndex + 1}/${STATE.detailImages.length}`;
+    }
+
+    function changeDetailPhoto(offset) {
+      if (!STATE.detailImages.length) return;
+      const next = (STATE.detailIndex + offset + STATE.detailImages.length) % STATE.detailImages.length;
+      STATE.detailIndex = next;
+      updateDetailPhoto();
+    }
+
+    function closeDetailPanel() {
+      if (!STATE.fullscreenOverlay) return;
+      STATE.detailPropertyId = '';
+      STATE.detailImages = [];
+      STATE.detailIndex = 0;
+      const panel = STATE.fullscreenOverlay.querySelector('#detailPanel');
+      if (!panel) return;
+      panel.classList.remove('open');
+      panel.innerHTML = '';
+    }
+
+    async function onViewRooms(propertyId) {
+      const property = STATE.propertyById.get(propertyId);
+      if (!property) return;
+
+      const payload = {
+        hotel_name: property.name || '',
+        check_in: STATE.checkIn || '',
+        check_out: STATE.checkOut || '',
+      };
+
+      try {
+        if (window.openai && window.openai.callTool) {
+          await Promise.resolve(window.openai.callTool('search_rooms', payload));
+          return;
+        }
+
+        window.parent.postMessage({
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: 'search_rooms', arguments: payload },
+        }, '*');
+      } catch (_err) {
+      }
+    }
+
+    function bindDetailPanelActions(panel) {
+      const closeBtn = panel.querySelector('.detail-close');
+      const prevBtn = panel.querySelector('.carousel-prev');
+      const nextBtn = panel.querySelector('.carousel-next');
+      const viewRoomsBtn = panel.querySelector('.detail-view-rooms');
+
+      if (closeBtn) closeBtn.addEventListener('click', closeDetailPanel);
+      if (prevBtn) prevBtn.addEventListener('click', () => changeDetailPhoto(-1));
+      if (nextBtn) nextBtn.addEventListener('click', () => changeDetailPhoto(1));
+      if (viewRoomsBtn) {
+        viewRoomsBtn.addEventListener('click', () => {
+          const propertyId = viewRoomsBtn.getAttribute('data-property-id') || '';
+          if (!propertyId) return;
+          onViewRooms(propertyId);
+        });
+      }
+    }
+
+    function moveMapCanvas(target, beforeNode) {
+      const mapCanvas = document.getElementById('mapCanvas');
+      if (!mapCanvas || !target) return;
+      if (beforeNode) {
+        target.insertBefore(mapCanvas, beforeNode);
+      } else {
+        target.appendChild(mapCanvas);
+      }
+    }
+
+    function triggerMapResize(refit) {
+      if (!STATE.map || !window.google || !google.maps) return;
+
+      setTimeout(() => {
+        google.maps.event.trigger(STATE.map, 'resize');
+        if (refit) {
+          fitMapToMarkers();
+          return;
+        }
+
+        const markerInfo = STATE.markers.get(STATE.selectedPropertyId);
+        if (markerInfo && markerInfo.position) {
+          STATE.map.panTo(markerInfo.position);
+        }
+      }, 80);
+    }
+
+    function openDetailPanel(propertyId) {
+      if (STATE.mode !== 'fullscreen') return;
+      STATE.detailPropertyId = propertyId;
+      renderDetailPanel();
+    }
+
+    function openFullscreen() {
+      if (STATE.fullscreenOverlay) return;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'fullscreenOverlay';
+      overlay.className = 'fullscreen-overlay';
+      overlay.innerHTML = `
+        <aside class="fullscreen-sidebar">
+          <div class="fullscreen-header">
+            <div class="close-row">
+              <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close fullscreen">✕</button>
+              <div id="fullscreenResultCount" class="result-count"></div>
+            </div>
+            <span id="fullscreenSearchBadge" class="search-badge"></span>
+          </div>
+          <div id="fullscreenCards" class="fullscreen-cards"></div>
+        </aside>
+        <section class="fullscreen-map-pane">
+          <div id="fullscreenMapSlot" class="fullscreen-map-slot"></div>
+          <div id="detailPanel" class="detail-panel"></div>
+        </section>
+      `;
+
+      document.body.appendChild(overlay);
+      STATE.fullscreenOverlay = overlay;
+      STATE.mode = 'fullscreen';
+
+      const closeBtn = overlay.querySelector('#fullscreenClose');
+      if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
+
+      renderFullscreenCards();
+
+      const fullscreenMapSlot = overlay.querySelector('#fullscreenMapSlot');
+      moveMapCanvas(fullscreenMapSlot);
+      triggerMapResize(false);
+
+      if (STATE.selectedPropertyId) {
+        scrollCardIntoView(STATE.selectedPropertyId);
+      }
+
+      sendHeight(window.innerHeight);
+    }
+
+    function closeFullscreen() {
+      if (!STATE.fullscreenOverlay) return;
+
+      closeDetailPanel();
+
+      const inlineMapShell = document.getElementById('inlineMapShell');
+      const mapStatus = document.getElementById('mapStatus');
+      moveMapCanvas(inlineMapShell, mapStatus);
+
+      STATE.fullscreenOverlay.remove();
+      STATE.fullscreenOverlay = null;
+      STATE.mode = 'inline';
+
+      triggerMapResize(true);
+      sendHeight();
+    }
+
+    function applyPayload(payload) {
+      STATE.properties = Array.isArray(payload.properties) ? payload.properties : [];
+      STATE.propertyById = new Map(STATE.properties.map((property) => [String(property.id), property]));
+      STATE.checkIn = String(payload.check_in || '');
+      STATE.checkOut = String(payload.check_out || '');
+      STATE.queryContext = payload.query_context && typeof payload.query_context === 'object' ? payload.query_context : {};
+      STATE.mapsApiKey = String(payload.maps_api_key || '');
+
+      renderShell();
+      renderInlineCards();
+
+      ensureMapReady()
+        .then(() => {
+          createMarkers();
+          if (!STATE.selectedPropertyId && STATE.properties.length) {
+            STATE.selectedPropertyId = String(STATE.properties[0].id || '');
+          }
+          updateCardStates();
+          updatePinStates();
+        })
+        .catch(() => {
+        })
+        .finally(() => {
+          setTimeout(sendHeight, 30);
+        });
+
+      if (STATE.fullscreenOverlay) {
+        renderFullscreenCards();
+      }
+    }
+
+    function isStructuredMapPayload(data) {
+      return !!data && typeof data === 'object' && Array.isArray(data.properties);
+    }
+
+    function normalizeToolPayload(raw) {
+      const sources = [];
+
+      if (raw && typeof raw === 'object') {
+        sources.push(raw);
+        sources.push(raw.structuredContent);
+        sources.push(raw.result);
+        sources.push(raw.result && raw.result.structuredContent);
+        sources.push(raw.params);
+        sources.push(raw.params && raw.params.structuredContent);
+        sources.push(raw.params && raw.params.result);
+        sources.push(raw.params && raw.params.result && raw.params.result.structuredContent);
+      }
+
+      if (window.openai && window.openai.toolOutput) {
+        const output = window.openai.toolOutput;
+        sources.push(output);
+        sources.push(output && output.structuredContent);
+        sources.push(output && output.result);
+        sources.push(output && output.result && output.result.structuredContent);
+      }
+
+      for (const candidate of sources) {
+        if (isStructuredMapPayload(candidate)) return candidate;
+      }
+      return null;
+    }
+
+    function clearHydrationTimers() {
+      if (STATE.hydrationTimeoutId) {
+        clearTimeout(STATE.hydrationTimeoutId);
+        STATE.hydrationTimeoutId = null;
+      }
+      if (STATE.hydrationPollId) {
+        clearInterval(STATE.hydrationPollId);
+        STATE.hydrationPollId = null;
+      }
+    }
+
+    function hydrate(raw) {
+      if (STATE.hydrated) return true;
+      const payload = normalizeToolPayload(raw);
+      if (!payload) return false;
+
+      STATE.hydrated = true;
+      clearHydrationTimers();
+      applyPayload(payload);
+      return true;
+    }
+
+    function showLoadError() {
+      if (STATE.hydrated) return;
+      document.getElementById('root').innerHTML =
+        '<div class="empty-state">Unable to load map results.<br><button class="retry-btn" type="button" onclick="retryHydration()">Retry</button></div>';
+    }
+
+    function probeHydrationSources() {
+      if (hydrate(window.openai && window.openai.toolOutput)) return true;
+
+      if (window.openai && typeof window.openai.getToolResult === 'function') {
+        Promise.resolve(window.openai.getToolResult())
+          .then((data) => hydrate(data))
+          .catch(() => { });
+      }
+      return STATE.hydrated;
+    }
+
+    function startHydrationChecks() {
+      clearHydrationTimers();
+      probeHydrationSources();
+
+      let polls = 0;
+      STATE.hydrationPollId = setInterval(() => {
+        polls += 1;
+        if (probeHydrationSources() || polls >= HYDRATION_MAX_POLLS) {
+          clearInterval(STATE.hydrationPollId);
+          STATE.hydrationPollId = null;
+        }
+      }, HYDRATION_POLL_MS);
+
+      STATE.hydrationTimeoutId = setTimeout(showLoadError, HYDRATION_TIMEOUT_MS);
+    }
+
+    function retryHydration() {
+      if (STATE.hydrated) return;
+      document.getElementById('root').innerHTML = '<div id="loading">Retrying...</div>';
+      startHydrationChecks();
+    }
+
+    function sendHeight(overrideHeight) {
+      const height = Number.isFinite(Number(overrideHeight)) && Number(overrideHeight) > 0
+        ? Number(overrideHeight)
+        : Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+
+      window.parent.postMessage({ type: 'widget:resize', height }, '*');
+    }
+
+    window.retryHydration = retryHydration;
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+
+      if (msg.jsonrpc === '2.0' && msg.method === 'ui/notifications/tool-result') {
+        hydrate(msg);
+        return;
+      }
+
+      hydrate(msg);
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        if (STATE.fullscreenOverlay && STATE.detailPropertyId) {
+          closeDetailPanel();
+          return;
+        }
+        if (STATE.fullscreenOverlay) {
+          closeFullscreen();
+        }
+      }
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+      sendHeight(STATE.mode === 'fullscreen' ? window.innerHeight : undefined);
+    });
+    resizeObserver.observe(document.body);
+
+    window.addEventListener('load', () => sendHeight());
+    window.addEventListener('resize', () => {
+      if (STATE.mode === 'fullscreen') {
+        sendHeight(window.innerHeight);
+        triggerMapResize(false);
+        return;
+      }
+      sendHeight();
+    });
+
+    startHydrationChecks();
+  </script>
+</body>
+
+</html>
