@@ -58,10 +58,30 @@ def create_app():
     try:
         from starlette.applications import Starlette
         from starlette.middleware import Middleware
-        from starlette.routing import Mount
+        from starlette.responses import Response as StarletteResponse
+        from starlette.routing import Mount, Route
         from account_middleware import AccountGatewayMiddleware
     except (ImportError, AttributeError):
         return mcp_app
+
+    async def mcp_probe(_: Any):
+        return StarletteResponse(
+            status_code=200,
+            headers={"Allow": "GET, HEAD, OPTIONS, POST"},
+        )
+
+    # Some connector UIs probe with GET before opening the MCP session.
+    # Keep POST handled by FastMCP's built-in /mcp route.
+    if hasattr(mcp_app, "routes"):
+        mcp_app.routes.insert(
+            0,
+            Route("/mcp", endpoint=mcp_probe, methods=["GET", "HEAD", "OPTIONS"]),
+        )
+
+    outer_kwargs: dict[str, Any] = {}
+    mcp_lifespan = getattr(mcp_app, "lifespan", None)
+    if mcp_lifespan is not None:
+        outer_kwargs["lifespan"] = mcp_lifespan
 
     outer = Starlette(
         routes=[
@@ -71,7 +91,8 @@ def create_app():
                 middleware=[Middleware(AccountGatewayMiddleware)],
             ),
             Mount("/", app=mcp_app),
-        ]
+        ],
+        **outer_kwargs,
     )
     return outer
 
