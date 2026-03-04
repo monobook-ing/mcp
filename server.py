@@ -105,6 +105,7 @@ BOOKING_CONFIRMATION_WIDGET_URI = "ui://widget/booking-confirmation.html"
 ROOM_GALLERY_WIDGET_URI = "ui://widget/room-gallery.html"
 KNOWLEDGE_ANSWER_WIDGET_URI = "ui://widget/knowledge-answer.html"
 SERVICES_CARD_WIDGET_URI = "ui://widget/services-card.html"
+HOTEL_MAP_WIDGET_URI = "ui://widget/hotel-map.html"
 
 MONOSEND_EMAILS_URL = "https://api.monosend.io/emails"
 MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
@@ -819,6 +820,20 @@ def services_card_resource() -> str:
     return load_widget("services_card")
 
 
+@mcp.resource(
+    uri=HOTEL_MAP_WIDGET_URI,
+    name="Hotel Map Widget",
+    description="Interactive map with hotel pins, card list, fullscreen view, and detail panel",
+    mime_type=RESOURCE_MIME,
+    meta={
+        "openai/widgetDescription": "Interactive hotel map showing properties as pins with prices. Supports fullscreen mode with detail panels.",
+        "openai/widgetPrefersBorder": False,
+    },
+)
+def hotel_map_resource() -> str:
+    return load_widget("hotel_map")
+
+
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
 
 @mcp.tool(
@@ -890,7 +905,232 @@ def search_hotels(
     }
 
 
-# ── Tool 2: search_rooms ──────────────────────────────────────────────────
+# ── Tool 2: search_properties_map ───────────────────────────────────────────
+
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+    app={"resourceUri": HOTEL_MAP_WIDGET_URI},
+    meta={
+        "openai/outputTemplate": HOTEL_MAP_WIDGET_URI,
+        "openai/widgetAccessible": True,
+    },
+)
+def search_properties_map(
+    city: str = "",
+    country: str = "",
+    hotel_name: str = "",
+    unit_type: str = "",
+    max_price: Optional[float] = None,
+    min_guests: Optional[int] = None,
+    amenity: str = "",
+    query: str = "",
+    check_in: str = "",
+    check_out: str = "",
+) -> dict:
+    """Search hotels/properties and display results on an interactive map with pins and cards.
+    Best for browsing multiple properties in a city or region.
+    Returns a map view with property locations, prices, and details."""
+
+    def _build_response(properties: list[dict]) -> dict:
+        structured = {
+            "properties": properties,
+            "count": len(properties),
+            "check_in": check_in,
+            "check_out": check_out,
+            "query_context": {
+                "city": city,
+                "country": country,
+                "hotel_name": hotel_name,
+                "unit_type": unit_type,
+                "max_price": max_price,
+                "min_guests": min_guests,
+                "amenity": amenity,
+                "query": query,
+            },
+            "maps_api_key": GOOGLE_PLACES_API_KEY,
+        }
+        return {
+            "content": [{"type": "text", "text": f"Found {len(properties)} properties on the map."}],
+            "structuredContent": structured,
+            "_meta": {
+                "ui": {"resourceUri": HOTEL_MAP_WIDGET_URI},
+                "openai/outputTemplate": HOTEL_MAP_WIDGET_URI,
+                "openai/widgetAccessible": True,
+            },
+        }
+
+    conditions = ["p.lat IS NOT NULL", "p.lng IS NOT NULL"]
+    params: list[Any] = []
+    account_pids = get_account_property_ids()
+
+    if city:
+        conditions.append("p.city ILIKE %s")
+        params.append(f"%{city}%")
+    if country:
+        conditions.append("p.country ILIKE %s")
+        params.append(f"%{country}%")
+    if hotel_name:
+        conditions.append("p.description ILIKE %s")
+        params.append(f"%{hotel_name}%")
+    if unit_type:
+        conditions.append("r.type ILIKE %s")
+        params.append(f"%{unit_type}%")
+    if max_price is not None:
+        conditions.append("r.price_per_night <= %s")
+        params.append(max_price)
+    if min_guests is not None:
+        conditions.append("r.max_guests >= %s")
+        params.append(min_guests)
+    if amenity:
+        conditions.append("array_to_string(COALESCE(r.amenities, ARRAY[]::text[]), ' ') ILIKE %s")
+        params.append(f"%{amenity}%")
+    if query:
+        like = f"%{query}%"
+        conditions.append(
+            "("
+            "r.name ILIKE %s OR "
+            "r.description ILIKE %s OR "
+            "r.type ILIKE %s OR "
+            "p.description ILIKE %s OR "
+            "p.city ILIKE %s OR "
+            "p.state ILIKE %s OR "
+            "p.country ILIKE %s OR "
+            "array_to_string(COALESCE(r.amenities, ARRAY[]::text[]), ' ') ILIKE %s"
+            ")"
+        )
+        params.extend([like, like, like, like, like, like, like, like])
+    if account_pids is not None:
+        if not account_pids:
+            return _build_response([])
+        scoped_pids = sorted(account_pids)
+        placeholders = ", ".join(["%s"] * len(scoped_pids))
+        conditions.append(f"p.id IN ({placeholders})")
+        params.extend(scoped_pids)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    sql = f"""
+        SELECT
+            p.id AS property_id,
+            p.description AS property_name,
+            p.image_url AS property_image_url,
+            p.rating AS property_rating,
+            p.city AS property_city,
+            p.state AS property_state,
+            p.country AS property_country,
+            p.street AS property_street,
+            p.lat AS property_lat,
+            p.lng AS property_lng,
+            r.id AS room_id,
+            r.name AS room_name,
+            r.type AS room_type,
+            r.price_per_night,
+            r.currency_code,
+            r.max_guests,
+            r.bed_config,
+            r.images AS room_images
+        FROM properties p
+        JOIN rooms r ON r.property_id = p.id
+        {where}
+        ORDER BY p.id, r.price_per_night ASC
+    """
+    rows = fetch_all(sql, params or None)
+    if not rows:
+        return _build_response([])
+
+    today = date.today().isoformat()
+    eff_in = check_in if check_in else today
+    eff_out = check_out if check_out else (date.today() + timedelta(days=1)).isoformat()
+    occupied_room_ids = _get_occupied_room_ids([str(r["room_id"]) for r in rows], eff_in, eff_out)
+    available_rows = [r for r in rows if str(r["room_id"]) not in occupied_room_ids]
+
+    if not available_rows:
+        return _build_response([])
+
+    grouped: dict[str, dict[str, Any]] = {}
+
+    for row in available_rows:
+        property_id = str(row["property_id"])
+        room_images = row.get("room_images")
+        if not isinstance(room_images, list):
+            room_images = [str(room_images)] if room_images else []
+
+        room_price = float(row.get("price_per_night") or 0)
+        room_image = room_images[0] if room_images else ""
+        room_payload = {
+            "id": str(row.get("room_id") or ""),
+            "name": row.get("room_name"),
+            "type": row.get("room_type"),
+            "price_per_night": room_price,
+            "currency_code": row.get("currency_code"),
+            "max_guests": row.get("max_guests"),
+            "image_url": room_image,
+            "bed_config": row.get("bed_config"),
+        }
+
+        if property_id not in grouped:
+            grouped[property_id] = {
+                "id": property_id,
+                "name": row.get("property_name") or "Hotel",
+                "image_url": row.get("property_image_url") or "",
+                "room_image": room_image,
+                "rating": row.get("property_rating"),
+                "city": row.get("property_city"),
+                "state": row.get("property_state"),
+                "country": row.get("property_country"),
+                "street": row.get("property_street"),
+                "lat": float(row.get("property_lat") or 0),
+                "lng": float(row.get("property_lng") or 0),
+                "rooms": [room_payload],
+            }
+            continue
+
+        grouped[property_id]["rooms"].append(room_payload)
+        if not grouped[property_id]["room_image"] and room_image:
+            grouped[property_id]["room_image"] = room_image
+
+    properties: list[dict[str, Any]] = []
+    for prop in grouped.values():
+        rooms = prop.pop("rooms")
+        rooms.sort(key=lambda r: float(r.get("price_per_night") or 0))
+        cheapest = rooms[0] if rooms else {}
+
+        properties.append(
+            {
+                **prop,
+                "room_image": prop.get("room_image") or cheapest.get("image_url") or "",
+                "min_price": float(cheapest.get("price_per_night") or 0),
+                "currency_code": cheapest.get("currency_code") or "USD",
+                "room_count": len(rooms),
+                "rooms": rooms[:3],
+            }
+        )
+
+    properties.sort(key=lambda p: float(p.get("min_price") or 0))
+
+    first_property = properties[0] if properties else {}
+    log_tool_call(
+        "search_properties_map",
+        f"Searched properties on map: city={city!r} country={country!r} unit_type={unit_type!r}",
+        property_id=str(first_property.get("id")) if first_property.get("id") else None,
+        request_payload={
+            "city": city,
+            "country": country,
+            "hotel_name": hotel_name,
+            "unit_type": unit_type,
+            "max_price": max_price,
+            "min_guests": min_guests,
+            "amenity": amenity,
+            "query": query,
+            "check_in": check_in,
+            "check_out": check_out,
+        },
+        response_payload={"count": len(properties)},
+    )
+
+    return _build_response(properties)
+
+
+# ── Tool 3: search_rooms ──────────────────────────────────────────────────
 
 def _get_occupied_room_ids(room_ids: list[str], check_in_str: str, check_out_str: str) -> set[str]:
     if not room_ids:
