@@ -952,6 +952,8 @@
       overlayRequestId: '',
       overlayAction: '',
       parentExpandAckTimeoutId: null,
+      hostFullscreenMaxWidth: 0,
+      hostFullscreenMaxHeight: 0,
     };
 
     const HYDRATION_TIMEOUT_MS = 5000;
@@ -959,6 +961,7 @@
     const HYDRATION_MAX_POLLS = 20;
     const PARENT_EXPAND_ACK_TIMEOUT_MS = 180;
     const FULLSCREEN_ENTER_DURATION_MS = 520;
+    const HOST_FULLSCREEN_EXIT_DELTA_PX = 220;
     const FULLSCREEN_WIDGET_NAME = 'hotel_map';
 
     function escapeHtml(value) {
@@ -1625,6 +1628,83 @@
       }
     }
 
+    function resetHostFullscreenViewportBounds() {
+      STATE.hostFullscreenMaxWidth = 0;
+      STATE.hostFullscreenMaxHeight = 0;
+    }
+
+    function updateHostFullscreenViewportBounds() {
+      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host') return;
+      STATE.hostFullscreenMaxWidth = Math.max(STATE.hostFullscreenMaxWidth, window.innerWidth || 0);
+      STATE.hostFullscreenMaxHeight = Math.max(STATE.hostFullscreenMaxHeight, window.innerHeight || 0);
+    }
+
+    function normalizeDisplayModeValue(rawMode) {
+      const mode = String(rawMode || '').trim().toLowerCase();
+      if (mode === 'fullscreen') return 'fullscreen';
+      if (mode === 'inline' || mode === 'default') return 'inline';
+      return '';
+    }
+
+    function readHostDisplayMode() {
+      const api = window.openai;
+      if (!api || typeof api !== 'object') return '';
+      return normalizeDisplayModeValue(api.displayMode || api.currentDisplayMode || api.mode);
+    }
+
+    function extractDisplayModeFromMessage(msg) {
+      if (!msg || typeof msg !== 'object') return '';
+      const type = String(msg.type || '');
+      const method = String(msg.method || '');
+      if (!/display.?mode/i.test(type) && !/display.?mode/i.test(method)) return '';
+
+      const state = msg.state && typeof msg.state === 'object' ? msg.state : {};
+      const params = msg.params && typeof msg.params === 'object' ? msg.params : {};
+      return normalizeDisplayModeValue(
+        msg.displayMode
+        || msg.display_mode
+        || msg.mode
+        || state.displayMode
+        || state.display_mode
+        || state.mode
+        || params.displayMode
+        || params.display_mode
+        || params.mode
+      );
+    }
+
+    function handleHostDisplayModeUpdate(mode) {
+      const normalized = normalizeDisplayModeValue(mode);
+      if (!normalized) return;
+      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host') return;
+      if (normalized !== 'fullscreen') {
+        closeFullscreenHostMode();
+      }
+    }
+
+    function maybeCloseHostFullscreenFromViewport() {
+      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host' || !STATE.fullscreenOverlay) return;
+
+      const hostMode = readHostDisplayMode();
+      if (hostMode) {
+        if (hostMode !== 'fullscreen') {
+          closeFullscreenHostMode();
+        } else {
+          updateHostFullscreenViewportBounds();
+        }
+        return;
+      }
+
+      updateHostFullscreenViewportBounds();
+      if (!STATE.hostFullscreenMaxWidth || !STATE.hostFullscreenMaxHeight) return;
+
+      const widthDrop = STATE.hostFullscreenMaxWidth - (window.innerWidth || 0);
+      const heightDrop = STATE.hostFullscreenMaxHeight - (window.innerHeight || 0);
+      if (widthDrop >= HOST_FULLSCREEN_EXIT_DELTA_PX || heightDrop >= HOST_FULLSCREEN_EXIT_DELTA_PX) {
+        closeFullscreenHostMode();
+      }
+    }
+
     function setInlineShellHidden(hidden) {
       const inlineMapShell = document.getElementById('inlineMapShell');
       if (!inlineMapShell) return;
@@ -1732,6 +1812,10 @@
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
       STATE.bottomSheetCollapsed = false;
+      if (source === 'host') {
+        resetHostFullscreenViewportBounds();
+        updateHostFullscreenViewportBounds();
+      }
       startFullscreenEnterAnimation(overlay);
 
       const closeBtn = overlay.querySelector('#fullscreenClose');
@@ -1764,6 +1848,15 @@
 
       if (STATE.selectedPropertyId) {
         scrollCardIntoView(STATE.selectedPropertyId);
+      }
+
+      if (source === 'host') {
+        requestAnimationFrame(() => {
+          updateHostFullscreenViewportBounds();
+        });
+        setTimeout(() => {
+          updateHostFullscreenViewportBounds();
+        }, 200);
       }
 
       sendHeight(getFullscreenViewportHeight());
@@ -1919,6 +2012,7 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      resetHostFullscreenViewportBounds();
       setInlineShellHidden(false);
 
       triggerMapResize();
@@ -2132,6 +2226,11 @@
       const msg = event.data;
       if (!msg || typeof msg !== 'object') return;
 
+      const displayMode = extractDisplayModeFromMessage(msg);
+      if (displayMode) {
+        handleHostDisplayModeUpdate(displayMode);
+      }
+
       if (msg.type === 'widget:overlay-state') {
         handleOverlayStateMessage(msg);
         return;
@@ -2172,12 +2271,14 @@
     window.addEventListener('webkitfullscreenchange', handleBrowserFullscreenChange);
 
     const resizeObserver = new ResizeObserver(() => {
+      maybeCloseHostFullscreenFromViewport();
       sendHeight(STATE.mode === 'fullscreen' ? getFullscreenViewportHeight() : undefined);
     });
     resizeObserver.observe(document.body);
 
     window.addEventListener('load', () => sendHeight());
     window.addEventListener('resize', () => {
+      maybeCloseHostFullscreenFromViewport();
       if (STATE.mode === 'fullscreen') {
         sendHeight(getFullscreenViewportHeight());
         triggerMapResize();
