@@ -444,6 +444,7 @@
       background: #fff;
       display: grid;
       grid-template-columns: 380px 1fr;
+      grid-template-rows: 58px 1fr;
       transform: scale(0.985);
       opacity: 0;
       transform-origin: center center;
@@ -463,27 +464,94 @@
       height: 100dvh;
     }
 
+    .fullscreen-topbar {
+      grid-column: 1 / -1;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      z-index: 9;
+    }
+
+    .fullscreen-topbar-left {
+      justify-self: start;
+      display: inline-flex;
+    }
+
+    .fullscreen-topbar-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #111827;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: min(42vw, 420px);
+    }
+
+    .fullscreen-topbar-right {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+    }
+
     .fullscreen-sidebar {
       border-right: 1px solid var(--line);
       background: #fff;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr;
+      grid-column: 1;
+      grid-row: 2;
     }
 
     .fullscreen-header {
-      padding: 14px;
+      padding: 18px 14px 14px;
       border-bottom: 1px solid var(--line);
       display: grid;
-      gap: 10px;
+      gap: 12px;
       background: #fff;
     }
 
-    .close-row {
+    .fullscreen-brand-block {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 10px;
+      min-height: 42px;
+    }
+
+    .fullscreen-brand-block.hidden {
+      display: none;
+    }
+
+    .fullscreen-brand-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      background: #fff;
+      object-fit: contain;
+      padding: 6px;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .fullscreen-brand-name {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .fullscreen-close {
@@ -497,9 +565,45 @@
       line-height: 1;
     }
 
+    .fullscreen-open-account-btn {
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.15);
+      background: #fff;
+      color: #111827;
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      padding: 0 16px 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .fullscreen-open-account-btn.hidden {
+      display: none;
+    }
+
+    .fullscreen-open-account-logo {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .fullscreen-open-account-logo.hidden {
+      display: none;
+    }
+
     .result-count {
-      font-size: 14px;
+      font-size: 18px;
+      line-height: 1;
       font-weight: 800;
+      letter-spacing: -0.02em;
       color: #111827;
     }
 
@@ -507,11 +611,18 @@
       display: inline-flex;
       width: fit-content;
       border-radius: 999px;
-      padding: 6px 10px;
+      padding: 8px 14px;
       background: rgba(15, 23, 42, 0.06);
       color: #111827;
-      font-size: 12px;
+      font-size: 14px;
+      line-height: 1;
       font-weight: 700;
+      letter-spacing: -0.02em;
+      border: 1px solid transparent;
+    }
+
+    .search-badge-label {
+      white-space: nowrap;
     }
 
     .fullscreen-cards {
@@ -535,6 +646,8 @@
       min-width: 0;
       min-height: 0;
       background: #f8fafc;
+      grid-column: 2;
+      grid-row: 2;
     }
 
     .fullscreen-map-slot {
@@ -571,6 +684,18 @@
       inset: 0;
       min-height: 100%;
       min-width: 100%;
+    }
+
+    .fullscreen-overlay-constrained .fullscreen-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      grid-column: auto;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      background: rgba(255, 255, 255, 0.92);
     }
 
     .fullscreen-overlay-constrained .fullscreen-sidebar {
@@ -610,20 +735,6 @@
       background: rgba(15, 23, 42, 0.24);
       pointer-events: none;
       display: block;
-    }
-
-    .fullscreen-close-floating {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 8;
-      width: 40px;
-      height: 40px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      background: rgba(15, 23, 42, 0.58);
-      color: #fff;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
-      backdrop-filter: blur(4px);
     }
 
     .detail-panel {
@@ -819,6 +930,10 @@
         grid-template-columns: 320px 1fr;
       }
 
+      .fullscreen-topbar-title {
+        font-size: 16px;
+      }
+
       .detail-panel {
         width: min(340px, calc(100% - 18px));
       }
@@ -887,12 +1002,42 @@
 
       .fullscreen-overlay {
         grid-template-columns: 1fr;
-        grid-template-rows: 40% 60%;
+        grid-template-rows: 58px 40% 60%;
+      }
+
+      .fullscreen-topbar {
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        padding: 8px 10px;
+      }
+
+      .fullscreen-topbar-title {
+        font-size: 15px;
+        max-width: none;
+      }
+
+      .fullscreen-open-account-btn {
+        max-width: 48vw;
+        overflow: hidden;
+      }
+
+      .fullscreen-open-account-btn span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .fullscreen-map-pane {
+        grid-column: 1;
+        grid-row: 2;
       }
 
       .fullscreen-sidebar {
         border-right: 0;
-        border-bottom: 1px solid var(--line);
+        border-top: 1px solid var(--line);
+        border-bottom: 0;
+        grid-column: 1;
+        grid-row: 3;
       }
 
       .detail-panel {
@@ -1031,6 +1176,139 @@
       return bits.length ? `Your search: ${bits.join(' · ')}` : 'Your search';
     }
 
+    function buildTopHeaderTitleFallback() {
+      const ctx = STATE.queryContext || {};
+      const fallback = String(ctx.hotel_name || ctx.city || 'Map results').trim();
+      return fallback || 'Map results';
+    }
+
+    function resolveFullscreenAccountContext() {
+      const scoped = (Array.isArray(STATE.properties) ? STATE.properties : [])
+        .map((property) => {
+          const name = String(property.account_name || '').trim();
+          const logoUrl = sanitizeUrl(property.account_logo_url || '');
+          const externalUrl = sanitizeUrl(property.account_external_url || '');
+          return {
+            name,
+            logoUrl,
+            externalUrl,
+            normalizedName: name.toLowerCase(),
+            normalizedLogoUrl: logoUrl.toLowerCase(),
+            normalizedExternalUrl: externalUrl.toLowerCase(),
+          };
+        });
+
+      const nonEmptyNames = new Set(scoped.map((entry) => entry.normalizedName).filter(Boolean));
+      const nonEmptyLogoUrls = new Set(scoped.map((entry) => entry.normalizedLogoUrl).filter(Boolean));
+      const nonEmptyExternalUrls = new Set(scoped.map((entry) => entry.normalizedExternalUrl).filter(Boolean));
+      const hasAnyAccountData = scoped.some((entry) => entry.name || entry.logoUrl || entry.externalUrl);
+
+      if (!hasAnyAccountData) {
+        return {
+          hasSingleAccount: false,
+          isMixedAccounts: false,
+          name: '',
+          logoUrl: '',
+          externalUrl: '',
+        };
+      }
+
+      const isMixedAccounts = (
+        nonEmptyNames.size > 1
+        || nonEmptyLogoUrls.size > 1
+        || nonEmptyExternalUrls.size > 1
+      );
+      if (isMixedAccounts) {
+        return {
+          hasSingleAccount: false,
+          isMixedAccounts: true,
+          name: '',
+          logoUrl: '',
+          externalUrl: '',
+        };
+      }
+
+      const best = scoped
+        .filter((entry) => entry.name || entry.logoUrl || entry.externalUrl)
+        .slice()
+        .sort((a, b) => {
+          const score = (item) => Number(!!item.name) + Number(!!item.logoUrl) + Number(!!item.externalUrl);
+          return score(b) - score(a);
+        })[0] || { name: '', logoUrl: '', externalUrl: '' };
+
+      return {
+        hasSingleAccount: true,
+        isMixedAccounts: false,
+        name: best.name || '',
+        logoUrl: best.logoUrl || '',
+        externalUrl: best.externalUrl || '',
+      };
+    }
+
+    function renderFullscreenHeader(accountContext) {
+      if (!STATE.fullscreenOverlay) return;
+
+      const context = accountContext || resolveFullscreenAccountContext();
+      const topTitle = STATE.fullscreenOverlay.querySelector('#fullscreenTopTitle');
+      const brandBlock = STATE.fullscreenOverlay.querySelector('#fullscreenBrandBlock');
+      const brandLogo = STATE.fullscreenOverlay.querySelector('#fullscreenBrandLogo');
+      const brandName = STATE.fullscreenOverlay.querySelector('#fullscreenBrandName');
+      const openBtn = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtn');
+      const openBtnLabel = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtnLabel');
+      const openBtnLogo = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtnLogo');
+
+      if (topTitle) {
+        topTitle.textContent = context.hasSingleAccount && context.name
+          ? context.name
+          : buildTopHeaderTitleFallback();
+      }
+
+      const showSidebarBrand = context.hasSingleAccount && !context.isMixedAccounts && !!(context.logoUrl || context.name);
+      if (brandBlock) {
+        brandBlock.classList.toggle('hidden', !showSidebarBrand);
+      }
+      if (brandLogo) {
+        if (showSidebarBrand && context.logoUrl) {
+          brandLogo.src = context.logoUrl;
+          brandLogo.alt = context.name ? `${context.name} logo` : 'Account logo';
+          brandLogo.classList.remove('hidden');
+        } else {
+          brandLogo.removeAttribute('src');
+          brandLogo.alt = '';
+          brandLogo.classList.add('hidden');
+        }
+      }
+      if (brandName) {
+        brandName.textContent = showSidebarBrand ? (context.name || '') : '';
+      }
+
+      const showOpenButton = context.hasSingleAccount && !context.isMixedAccounts && !!context.externalUrl;
+      if (openBtn) {
+        openBtn.classList.toggle('hidden', !showOpenButton);
+        openBtn.onclick = null;
+      }
+      if (openBtnLabel) {
+        const accountLabel = context.name || 'account';
+        openBtnLabel.textContent = `Open in ${accountLabel}`;
+      }
+      if (openBtnLogo) {
+        if (showOpenButton && context.logoUrl) {
+          openBtnLogo.src = context.logoUrl;
+          openBtnLogo.alt = '';
+          openBtnLogo.classList.remove('hidden');
+        } else {
+          openBtnLogo.removeAttribute('src');
+          openBtnLogo.alt = '';
+          openBtnLogo.classList.add('hidden');
+        }
+      }
+      if (showOpenButton && openBtn) {
+        openBtn.onclick = () => {
+          window.open(context.externalUrl, '_blank', 'noopener,noreferrer');
+        };
+      }
+    }
+
     function buildPropertyCard(property, layout) {
       const photoUrl = sanitizeUrl(property.room_image || property.image_url || '');
       const fallbackLabel = escapeHtml((property.name || 'Hotel').slice(0, 1).toUpperCase());
@@ -1110,9 +1388,15 @@
       const cards = STATE.fullscreenOverlay.querySelector('#fullscreenCards');
       const resultCount = STATE.fullscreenOverlay.querySelector('#fullscreenResultCount');
       const searchBadge = STATE.fullscreenOverlay.querySelector('#fullscreenSearchBadge');
+      const accountContext = resolveFullscreenAccountContext();
 
       if (resultCount) resultCount.textContent = `${STATE.properties.length} result${STATE.properties.length === 1 ? '' : 's'}`;
-      if (searchBadge) searchBadge.textContent = buildSearchBadgeText();
+      if (searchBadge) {
+        searchBadge.textContent = 'Your search';
+        searchBadge.setAttribute('title', buildSearchBadgeText());
+        searchBadge.setAttribute('aria-label', buildSearchBadgeText());
+      }
+      renderFullscreenHeader(accountContext);
 
       if (!cards) return;
 
@@ -1719,13 +2003,26 @@
       overlay.id = 'fullscreenOverlay';
       overlay.className = className;
       overlay.innerHTML = `
+        <header class="fullscreen-topbar">
+          <div class="fullscreen-topbar-left">
+            <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close fullscreen">✕</button>
+          </div>
+          <p id="fullscreenTopTitle" class="fullscreen-topbar-title"></p>
+          <div class="fullscreen-topbar-right">
+            <button id="fullscreenOpenAccountBtn" class="fullscreen-open-account-btn hidden" type="button" aria-label="Open account website">
+              <img id="fullscreenOpenAccountBtnLogo" class="fullscreen-open-account-logo hidden" alt="" />
+              <span id="fullscreenOpenAccountBtnLabel"></span>
+            </button>
+          </div>
+        </header>
         <aside class="fullscreen-sidebar">
           <div class="fullscreen-header">
-            <div class="close-row">
-              <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close fullscreen">✕</button>
-              <div id="fullscreenResultCount" class="result-count"></div>
+            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
+            <div id="fullscreenResultCount" class="result-count"></div>
           </div>
           <div id="fullscreenCards" class="fullscreen-cards"></div>
         </aside>
@@ -1742,8 +2039,19 @@
       overlay.id = 'fullscreenOverlay';
       overlay.className = 'fullscreen-overlay-constrained';
       overlay.innerHTML = `
+        <header class="fullscreen-topbar">
+          <div class="fullscreen-topbar-left">
+            <button id="fullscreenClose" class="fullscreen-close" type="button" aria-label="Close fullscreen">✕</button>
+          </div>
+          <p id="fullscreenTopTitle" class="fullscreen-topbar-title"></p>
+          <div class="fullscreen-topbar-right">
+            <button id="fullscreenOpenAccountBtn" class="fullscreen-open-account-btn hidden" type="button" aria-label="Open account website">
+              <img id="fullscreenOpenAccountBtnLogo" class="fullscreen-open-account-logo hidden" alt="" />
+              <span id="fullscreenOpenAccountBtnLabel"></span>
+            </button>
+          </div>
+        </header>
         <section class="fullscreen-map-pane">
-          <button id="fullscreenCloseFloating" class="fullscreen-close fullscreen-close-floating" type="button" aria-label="Close fullscreen">✕</button>
           <div id="fullscreenMapSlot" class="fullscreen-map-slot"></div>
           <div id="detailPanel" class="detail-panel"></div>
         </section>
@@ -1751,8 +2059,12 @@
           <button id="bottomSheetHandle" class="bottom-sheet-handle" type="button" aria-label="Toggle property list"></button>
           <span class="handle-bar"></span>
           <div class="fullscreen-header">
-            <div id="fullscreenResultCount" class="result-count"></div>
+            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
+            </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
+            <div id="fullscreenResultCount" class="result-count"></div>
           </div>
           <div id="fullscreenCards" class="fullscreen-cards"></div>
         </aside>
@@ -1825,9 +2137,6 @@
       if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
 
       if (source === 'constrained') {
-        const floatingCloseBtn = overlay.querySelector('#fullscreenCloseFloating');
-        if (floatingCloseBtn) floatingCloseBtn.addEventListener('click', closeFullscreen);
-
         const bottomSheetHandle = overlay.querySelector('#bottomSheetHandle');
         if (bottomSheetHandle) bottomSheetHandle.addEventListener('click', toggleBottomSheet);
       }

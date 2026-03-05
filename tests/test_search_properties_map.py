@@ -54,6 +54,9 @@ def make_unit_row(
         "p_lat": lat,
         "p_lng": lng,
         "p_street": "Mariahilfer Strasse 1",
+        "p_account_name": "ALL Accor",
+        "p_account_logo_url": "https://example.com/account-logo.png",
+        "p_account_external_url": "https://all.accor.com",
     }
 
 
@@ -144,6 +147,16 @@ class SearchPropertiesMapTests(unittest.TestCase):
             EXPECTED_MAP_FOLLOW_UP_INSTRUCTIONS,
         )
         self.assertFalse(map_result["structuredContent"]["relaxed_country_filter"])
+        first_property = map_result["structuredContent"]["properties"][0]
+        self.assertEqual(first_property["account_name"], "ALL Accor")
+        self.assertEqual(
+            first_property["account_logo_url"],
+            "https://example.com/account-logo.png",
+        )
+        self.assertEqual(
+            first_property["account_external_url"],
+            "https://all.accor.com",
+        )
         map_rooms = map_result["structuredContent"]["properties"][0]["rooms"]
         self.assertEqual(len(map_rooms), 1)
         self.assertEqual(map_rooms[0]["id"], "u1")
