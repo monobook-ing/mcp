@@ -224,9 +224,10 @@ def _build_rag_answer(question: str, chunks: list[dict]) -> str:
         "Answer only with information from the provided sources. "
         "If the answer is not in the sources, say that you do not have enough information."
     )
+    context_block = "\n".join(context_lines)
     user_prompt = (
         "Use the context below to answer the user question.\n\n"
-        f"{'\n'.join(context_lines)}\n\n"
+        f"{context_block}\n\n"
         f"Question: {question}"
     )
 
@@ -978,6 +979,9 @@ def _row_to_search_unit(row: dict[str, Any]) -> dict[str, Any]:
         "lng": data.pop("p_lng", None),
         "name": data.pop("p_name", None),
         "street": data.pop("p_street", None),
+        "account_name": data.pop("p_account_name", None),
+        "account_logo_url": data.pop("p_account_logo_url", None),
+        "account_external_url": data.pop("p_account_external_url", None),
     }
     return data
 
@@ -1031,9 +1035,13 @@ def _run_room_candidate_query(
                p.city AS p_city, p.state AS p_state, p.country AS p_country,
                p.rating AS p_rating, p.image_url AS p_image_url,
                p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name,
-               p.street AS p_street
+               p.street AS p_street,
+               a.name AS p_account_name,
+               a.logo_url AS p_account_logo_url,
+               a.external_url AS p_account_external_url
         FROM rooms r
         JOIN properties p ON r.property_id = p.id
+        JOIN accounts a ON p.account_id = a.id
         {where}
     """
     rows = fetch_all(sql, params or None)
@@ -1239,6 +1247,9 @@ def search_properties_map(
                 "state": accommodation.get("state"),
                 "country": accommodation.get("country"),
                 "street": accommodation.get("street"),
+                "account_name": accommodation.get("account_name") or "",
+                "account_logo_url": accommodation.get("account_logo_url") or "",
+                "account_external_url": accommodation.get("account_external_url") or "",
                 "lat": float(accommodation.get("lat") or 0),
                 "lng": float(accommodation.get("lng") or 0),
                 "rooms": [room_payload],
