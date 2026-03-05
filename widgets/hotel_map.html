@@ -1971,7 +1971,19 @@
       }
 
       clearOverlayRequestState();
-      closeFullscreenParentMode();
+      if (STATE.fullscreenSource === 'host') {
+        closeFullscreenHostMode();
+        return;
+      }
+      if (STATE.fullscreenSource === 'parent') {
+        closeFullscreenParentMode();
+        return;
+      }
+      if (STATE.fullscreenSource === 'constrained') {
+        closeFullscreenConstrainedMode();
+        return;
+      }
+      closeFullscreenIframeFallback();
     }
 
     function applyPayload(payload) {
