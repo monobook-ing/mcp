@@ -241,7 +241,7 @@
     }
 
     .inline-cards .property-body {
-      padding: 4px 6px 6px 6px;
+      padding: 0px 6px 0px 6px;
       gap: 12px;
       align-content: center;
     }
@@ -255,16 +255,16 @@
 
     .inline-from-price {
       margin: 0;
-      font-size: 22px;
+      font-size: 16px;
       line-height: 1;
       letter-spacing: -0.03em;
-      font-weight: 600;
+      font-weight: 500;
       color: #1f2937;
     }
 
     .inline-brand-token {
-      width: 42px;
-      height: 42px;
+      width: 32px;
+      height: 32px;
       border-radius: 12px;
       background: #fff;
       border: 1px solid rgba(15, 23, 42, 0.12);
@@ -856,7 +856,7 @@
       }
 
       .inline-from-price {
-        font-size: 20px;
+        font-size: 16px;
       }
 
       .inline-hotel-class-row {
@@ -883,7 +883,7 @@
 
       .inline-cards .property-body {
         gap: 8px;
-        padding: 2px 4px 2px 2px;
+        padding: 0px 4px 0px 2px;
       }
 
       .inline-from-price {
@@ -1089,7 +1089,7 @@
                 <span>Hotel ${escapeHtml(String(classNumber))}</span>
                 <span class="inline-hotel-stars" aria-hidden="true">✩✩</span>
               </div>
-              <div class="property-meta">${escapeHtml(cityLine || 'Location unavailable')}</div>
+              <div class="property-meta" style="display:none">${escapeHtml(cityLine || 'Location unavailable')}</div>
             </div>
           </article>
         `;
