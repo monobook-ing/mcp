@@ -172,8 +172,6 @@
 
     .property-card {
       scroll-snap-align: start;
-      min-width: 260px;
-      max-width: 300px;
       border-radius: var(--radius-lg);
       overflow: hidden;
       border: 1px solid rgba(15, 23, 42, 0.08);
@@ -183,13 +181,7 @@
       transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
 
-    .inline-cards .property-card {
-      width: 380px;
-      height: 122px;
-      min-width: 380px;
-      max-width: 380px;
-      min-height: 122px;
-      max-height: 122px;
+    .property-card--compact {
       display: grid;
       grid-template-columns: 96px minmax(0, 1fr);
       gap: 14px;
@@ -202,6 +194,15 @@
       box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
     }
 
+    .inline-cards .property-card--compact {
+      width: 380px;
+      height: 122px;
+      min-width: 380px;
+      max-width: 380px;
+      min-height: 122px;
+      max-height: 122px;
+    }
+
     .property-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
@@ -212,13 +213,13 @@
       /*box-shadow: 0 0 0 1px #111827, 0 16px 32px rgba(15, 23, 42, 0.14);*/
     }
 
-    .inline-cards .property-card.card-active {
+    .property-card--compact.card-active {
       border-color: #cbd5e1;
       box-shadow: 0 10px 26px rgba(15, 23, 42, 0.15);
       background: #f3f4f6;
     }
 
-    .inline-cards .property-card.:hover {
+    .property-card--compact:hover {
       background: #f3f4f6;
     }
 
@@ -229,7 +230,7 @@
       overflow: hidden;
     }
 
-    .inline-cards .property-photo-wrap {
+    .property-card--compact .property-photo-wrap {
       height: 96px;
       width: 96px;
       min-height: 96px;
@@ -240,7 +241,7 @@
       border-top-right-radius: 0px;
     }
 
-    .inline-cards .property-body {
+    .property-card--compact .property-body {
       padding: 0px 6px 0px 6px;
       gap: 12px;
       align-content: center;
@@ -307,7 +308,7 @@
       font-weight: 600;
     }
 
-    .inline-cards .property-name {
+    .property-card--compact .property-name {
       font-size: 15px;
       line-height: 1.06;
       font-weight: 600;
@@ -315,7 +316,7 @@
       color: #141a24;
     }
 
-    .inline-cards .property-meta {
+    .property-card--compact .property-meta {
       font-size: 12px;
       line-height: 1.08;
       letter-spacing: -0.02em;
@@ -328,20 +329,6 @@
       height: 100%;
       object-fit: cover;
       display: block;
-    }
-
-    .price-badge {
-      position: absolute;
-      left: 10px;
-      top: 10px;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 800;
-      color: #fff;
-      background: rgba(17, 24, 39, 0.82);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
 
     .property-body {
@@ -360,20 +347,6 @@
       text-overflow: ellipsis;
     }
 
-    .property-rating-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      color: #1f2937;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .rating-stars {
-      letter-spacing: 0.02em;
-    }
-
     .property-meta {
       color: #4b5563;
       font-size: 12px;
@@ -381,12 +354,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .hotel-class {
-      font-size: 12px;
-      font-weight: 700;
-      color: #6b7280;
     }
 
     .empty-state,
@@ -556,10 +523,11 @@
       background: #f9fafb;
     }
 
-    .fullscreen-cards .property-card {
+    .fullscreen-cards .property-card--compact {
       max-width: none;
       min-width: 0;
       width: 100%;
+      min-height: 122px;
     }
 
     .fullscreen-map-pane {
@@ -867,11 +835,11 @@
         font-size: 13px;
       }
 
-      .inline-cards .property-name {
+      .property-card--compact .property-name {
         font-size: 15px;
       }
 
-      .inline-cards .property-meta {
+      .property-card--compact .property-meta {
         font-size: 12px;
       }
     }
@@ -881,7 +849,7 @@
         height: 520px;
       }
 
-      .inline-cards .property-body {
+      .property-card--compact .property-body {
         gap: 8px;
         padding: 0px 4px 0px 2px;
       }
@@ -909,11 +877,11 @@
         font-size: 11px;
       }
 
-      .inline-cards .property-name {
+      .property-card--compact .property-name {
         font-size: 14px;
       }
 
-      .inline-cards .property-meta {
+      .property-card--compact .property-meta {
         font-size: 11px;
       }
 
@@ -1066,50 +1034,29 @@
       const cityLine = [property.city, property.country].filter(Boolean).join(', ');
       const classNumber = hotelClassNumber(property.rating);
       const logoUrl = sanitizeUrl(property.brand_logo_url || property.logo_url || property.chain_logo_url || '');
-
-      if (layout === 'inline') {
-        return `
-          <article class="property-card" data-property-id="${escapeHtml(property.id)}">
-            <div class="property-photo-wrap">
-              ${photoUrl
-            ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" />`
-            : `<div class="property-photo" style="display:grid;place-items:center;font-size:42px;font-weight:900;color:#64748b;">${fallbackLabel}</div>`}
-            </div>
-            <div class="property-body">
-              <div class="inline-top-row">
-                <p class="inline-from-price">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</p>
-                <span class="inline-brand-token" aria-hidden="true">
-                  ${logoUrl
-            ? `<img src="${logoUrl}" alt="" />`
-            : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
-                </span>
-              </div>
-              <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
-              <div class="inline-hotel-class-row">
-                <span>Hotel ${escapeHtml(String(classNumber))}</span>
-                <span class="inline-hotel-stars" aria-hidden="true">✩✩</span>
-              </div>
-              <div class="property-meta" style="display:none">${escapeHtml(cityLine || 'Location unavailable')}</div>
-            </div>
-          </article>
-        `;
-      }
-
+      const layoutClass = layout === 'fullscreen' ? 'property-card--fullscreen' : 'property-card--inline';
       return `
-        <article class="property-card ${layout === 'fullscreen' ? 'property-card-fullscreen' : ''}" data-property-id="${escapeHtml(property.id)}">
+        <article class="property-card property-card--compact ${layoutClass}" data-property-id="${escapeHtml(property.id)}">
           <div class="property-photo-wrap">
             ${photoUrl
           ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" />`
           : `<div class="property-photo" style="display:grid;place-items:center;font-size:42px;font-weight:900;color:#64748b;">${fallbackLabel}</div>`}
-            <span class="price-badge">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</span>
           </div>
           <div class="property-body">
-            <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
-            <div class="property-rating-row">
-              <span class="rating-stars">${escapeHtml(getStars(property.rating))} ${escapeHtml(formatRating(property.rating))}</span>
-              <span class="hotel-class">${escapeHtml(hotelClass(property.rating))}</span>
+            <div class="inline-top-row">
+              <p class="inline-from-price">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</p>
+              <span class="inline-brand-token" aria-hidden="true">
+                ${logoUrl
+          ? `<img src="${logoUrl}" alt="" />`
+          : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
+              </span>
             </div>
-            <div class="property-meta">${escapeHtml(cityLine || 'Location unavailable')}</div>
+            <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
+            <div class="inline-hotel-class-row">
+              <span>Hotel ${escapeHtml(String(classNumber))}</span>
+              <span class="inline-hotel-stars" aria-hidden="true">✩✩</span>
+            </div>
+            <div class="property-meta" style="display:none">${escapeHtml(cityLine || 'Location unavailable')}</div>
           </div>
         </article>
       `;
