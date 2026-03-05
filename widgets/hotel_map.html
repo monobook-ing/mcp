@@ -148,6 +148,8 @@
       padding: 4px 14px 12px;
       scroll-snap-type: x mandatory;
       pointer-events: none;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
     .inline-cards .property-card,
@@ -156,7 +158,8 @@
     }
 
     .inline-cards::-webkit-scrollbar {
-      height: 8px;
+      display: none;
+      height: 0;
     }
 
     .inline-cards::-webkit-scrollbar-thumb {
@@ -178,8 +181,12 @@
     }
 
     .inline-cards .property-card {
+      width: 540px;
+      height: 200px;
       min-width: 540px;
-      max-width: 620px;
+      max-width: 540px;
+      min-height: 200px;
+      max-height: 200px;
       display: grid;
       grid-template-columns: 176px minmax(0, 1fr);
       gap: 14px;
@@ -214,13 +221,14 @@
     }
 
     .inline-cards .property-photo-wrap {
-      height: 100%;
+      height: 176px;
       min-height: 176px;
+      max-height: 176px;
       border-radius: 26px;
     }
 
     .inline-cards .property-body {
-      padding: 4px 6px 6px 0;
+      padding: 4px 6px 6px 6px;
       gap: 12px;
       align-content: center;
     }
@@ -739,16 +747,6 @@
         width: min(340px, calc(100% - 18px));
       }
 
-      .inline-cards .property-card {
-        min-width: 470px;
-        max-width: 530px;
-        grid-template-columns: 150px minmax(0, 1fr);
-      }
-
-      .inline-cards .property-photo-wrap {
-        min-height: 150px;
-      }
-
       .inline-from-price {
         font-size: 20px;
       }
@@ -775,23 +773,9 @@
         height: 520px;
       }
 
-      .inline-cards .property-card {
-        min-width: 332px;
-        max-width: 372px;
-        grid-template-columns: 112px minmax(0, 1fr);
-        border-radius: 24px;
-        gap: 10px;
-        padding: 8px;
-      }
-
-      .inline-cards .property-photo-wrap {
-        min-height: 112px;
-        border-radius: 18px;
-      }
-
       .inline-cards .property-body {
         gap: 8px;
-        padding: 2px 4px 2px 0;
+        padding: 2px 4px 2px 2px;
       }
 
       .inline-from-price {
