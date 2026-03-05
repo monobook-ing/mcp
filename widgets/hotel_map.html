@@ -558,6 +558,77 @@
       inset: 0;
     }
 
+    .fullscreen-overlay-constrained {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #f8fafc;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+      overflow: hidden;
+    }
+
+    .fullscreen-overlay-constrained .fullscreen-map-pane {
+      position: absolute;
+      inset: 0;
+      min-height: 100%;
+      min-width: 100%;
+    }
+
+    .fullscreen-overlay-constrained .fullscreen-sidebar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: auto;
+      max-height: 45%;
+      border-right: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.2);
+      z-index: 6;
+      transition: max-height 0.24s ease;
+    }
+
+    .fullscreen-overlay-constrained .fullscreen-sidebar.collapsed {
+      max-height: 80px;
+    }
+
+    .bottom-sheet-handle {
+      width: 100%;
+      border: 0;
+      margin: 0;
+      padding: 8px 16px;
+      background: transparent;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .bottom-sheet-handle + .handle-bar {
+      width: 44px;
+      height: 5px;
+      margin: 0 auto 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.24);
+      pointer-events: none;
+      display: block;
+    }
+
+    .fullscreen-close-floating {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 8;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(15, 23, 42, 0.58);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+      backdrop-filter: blur(4px);
+    }
+
     .detail-panel {
       position: absolute;
       right: 16px;
@@ -863,6 +934,8 @@
       hydrationTimeoutId: null,
       hydrationPollId: null,
       fullscreenSource: 'none',
+      fullscreenApiActive: false,
+      bottomSheetCollapsed: false,
       overlayRequestId: '',
       overlayAction: '',
       parentExpandAckTimeoutId: null,
@@ -1291,7 +1364,7 @@
         openDetailPanel(propertyId);
       }
 
-      sendHeight(STATE.mode === 'fullscreen' ? window.innerHeight : undefined);
+      sendHeight(STATE.mode === 'fullscreen' ? getFullscreenViewportHeight() : undefined);
     }
 
     function collectDetailImages(property) {
@@ -1490,12 +1563,21 @@
     }
 
     function postOverlayMessage(type, requestId) {
-      window.parent.postMessage({
+      const payload = {
         type,
         widget: FULLSCREEN_WIDGET_NAME,
         requestId,
         ts: Date.now(),
-      }, '*');
+      };
+
+      window.parent.postMessage(payload, '*');
+
+      try {
+        if (window.top && window.top !== window.parent) {
+          window.top.postMessage(payload, '*');
+        }
+      } catch (_) {
+      }
     }
 
     function clearParentExpandAckTimeout() {
@@ -1539,13 +1621,95 @@
       return overlay;
     }
 
+    function buildConstrainedOverlayElement() {
+      const overlay = document.createElement('div');
+      overlay.id = 'fullscreenOverlay';
+      overlay.className = 'fullscreen-overlay-constrained';
+      overlay.innerHTML = `
+        <section class="fullscreen-map-pane">
+          <button id="fullscreenCloseFloating" class="fullscreen-close fullscreen-close-floating" type="button" aria-label="Close fullscreen">✕</button>
+          <div id="fullscreenMapSlot" class="fullscreen-map-slot"></div>
+          <div id="detailPanel" class="detail-panel"></div>
+        </section>
+        <aside class="fullscreen-sidebar">
+          <button id="bottomSheetHandle" class="bottom-sheet-handle" type="button" aria-label="Toggle property list"></button>
+          <span class="handle-bar"></span>
+          <div class="fullscreen-header">
+            <div id="fullscreenResultCount" class="result-count"></div>
+            <span id="fullscreenSearchBadge" class="search-badge"></span>
+          </div>
+          <div id="fullscreenCards" class="fullscreen-cards"></div>
+        </aside>
+      `;
+      return overlay;
+    }
+
+    async function tryFullscreenApi() {
+      const root = document.documentElement;
+      if (!root) return false;
+
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        STATE.fullscreenApiActive = true;
+        return true;
+      }
+
+      const requestFullscreen = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (typeof requestFullscreen !== 'function') return false;
+
+      try {
+        await Promise.resolve(requestFullscreen.call(root));
+        STATE.fullscreenApiActive = true;
+        return true;
+      } catch (_) {
+        STATE.fullscreenApiActive = false;
+        return false;
+      }
+    }
+
+    function exitBrowserFullscreenIfNeeded() {
+      if (!STATE.fullscreenApiActive) return;
+      const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+      if (typeof exitFullscreen !== 'function') {
+        STATE.fullscreenApiActive = false;
+        return;
+      }
+
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fullscreenElement) {
+        STATE.fullscreenApiActive = false;
+        return;
+      }
+
+      STATE.fullscreenApiActive = false;
+      Promise.resolve(exitFullscreen.call(document)).catch(() => {
+      });
+    }
+
+    function toggleBottomSheet() {
+      if (!STATE.fullscreenOverlay || STATE.fullscreenSource !== 'constrained') return;
+      const sidebar = STATE.fullscreenOverlay.querySelector('.fullscreen-sidebar');
+      if (!sidebar) return;
+
+      STATE.bottomSheetCollapsed = !STATE.bottomSheetCollapsed;
+      sidebar.classList.toggle('collapsed', STATE.bottomSheetCollapsed);
+    }
+
     function activateFullscreenOverlay(overlay, source) {
       STATE.fullscreenOverlay = overlay;
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
+      STATE.bottomSheetCollapsed = false;
 
       const closeBtn = overlay.querySelector('#fullscreenClose');
       if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
+
+      if (source === 'constrained') {
+        const floatingCloseBtn = overlay.querySelector('#fullscreenCloseFloating');
+        if (floatingCloseBtn) floatingCloseBtn.addEventListener('click', closeFullscreen);
+
+        const bottomSheetHandle = overlay.querySelector('#bottomSheetHandle');
+        if (bottomSheetHandle) bottomSheetHandle.addEventListener('click', toggleBottomSheet);
+      }
 
       renderFullscreenCards();
 
@@ -1557,7 +1721,7 @@
         scrollCardIntoView(STATE.selectedPropertyId);
       }
 
-      sendHeight(window.innerHeight);
+      sendHeight(getFullscreenViewportHeight());
     }
 
     function openFullscreenParentMode() {
@@ -1565,6 +1729,9 @@
 
       if (STATE.fullscreenSource === 'iframe' && STATE.fullscreenOverlay) {
         closeFullscreenIframeFallback();
+      }
+      if (STATE.fullscreenSource === 'constrained' && STATE.fullscreenOverlay) {
+        closeFullscreenConstrainedMode();
       }
 
       const overlay = buildFullscreenOverlayElement('fullscreen-overlay fullscreen-overlay-embedded');
@@ -1580,6 +1747,14 @@
       activateFullscreenOverlay(overlay, 'iframe');
     }
 
+    function openFullscreenConstrainedMode() {
+      if (STATE.fullscreenOverlay) return;
+      sendHeight(Math.max(window.innerHeight, window.screen?.height || 0));
+      const overlay = buildConstrainedOverlayElement();
+      document.body.appendChild(overlay);
+      activateFullscreenOverlay(overlay, 'constrained');
+    }
+
     function requestParentExpand() {
       const requestId = createOverlayRequestId('expand');
       STATE.overlayAction = 'expand';
@@ -1587,13 +1762,19 @@
       clearParentExpandAckTimeout();
       postOverlayMessage('widget:expand', requestId);
 
-      STATE.parentExpandAckTimeoutId = setTimeout(() => {
+      STATE.parentExpandAckTimeoutId = setTimeout(async () => {
         if (STATE.overlayAction !== 'expand') return;
         if (STATE.overlayRequestId !== requestId) return;
 
         clearOverlayRequestState();
         if (STATE.mode === 'fullscreen') return;
-        openFullscreenIframeFallback();
+        const fullscreenApiWorked = await tryFullscreenApi();
+        if (STATE.mode === 'fullscreen') return;
+        if (fullscreenApiWorked) {
+          openFullscreenIframeFallback();
+          return;
+        }
+        openFullscreenConstrainedMode();
       }, PARENT_EXPAND_ACK_TIMEOUT_MS);
     }
 
@@ -1604,6 +1785,7 @@
 
     function closeFullscreenParentMode() {
       if (STATE.fullscreenSource !== 'parent' || !STATE.fullscreenOverlay) return;
+      exitBrowserFullscreenIfNeeded();
 
       closeDetailPanel();
 
@@ -1623,6 +1805,7 @@
 
     function closeFullscreenIframeFallback() {
       if (STATE.fullscreenSource !== 'iframe' || !STATE.fullscreenOverlay) return;
+      exitBrowserFullscreenIfNeeded();
 
       closeDetailPanel();
 
@@ -1640,6 +1823,27 @@
       sendHeight();
     }
 
+    function closeFullscreenConstrainedMode() {
+      if (STATE.fullscreenSource !== 'constrained' || !STATE.fullscreenOverlay) return;
+      exitBrowserFullscreenIfNeeded();
+
+      closeDetailPanel();
+
+      const inlineMapShell = document.getElementById('inlineMapShell');
+      const mapStatus = document.getElementById('mapStatus');
+      moveMapCanvas(inlineMapShell, mapStatus);
+
+      STATE.fullscreenOverlay.remove();
+      STATE.fullscreenOverlay = null;
+      STATE.mode = 'inline';
+      STATE.fullscreenSource = 'none';
+      STATE.bottomSheetCollapsed = false;
+      setInlineShellHidden(false);
+
+      triggerMapResize();
+      sendHeight();
+    }
+
     function requestParentCollapse() {
       const requestId = createOverlayRequestId('collapse');
       STATE.overlayAction = 'collapse';
@@ -1649,8 +1853,13 @@
 
     function closeFullscreen() {
       if (STATE.mode !== 'fullscreen') return;
+      exitBrowserFullscreenIfNeeded();
       if (STATE.fullscreenSource === 'parent') {
         requestParentCollapse();
+        return;
+      }
+      if (STATE.fullscreenSource === 'constrained') {
+        closeFullscreenConstrainedMode();
         return;
       }
       closeFullscreenIframeFallback();
@@ -1812,6 +2021,13 @@
       window.parent.postMessage({ type: 'widget:resize', height }, '*');
     }
 
+    function getFullscreenViewportHeight() {
+      if (STATE.fullscreenSource === 'constrained') {
+        return Math.max(window.innerHeight, window.screen?.height || 0);
+      }
+      return window.innerHeight;
+    }
+
     window.retryHydration = retryHydration;
 
     window.addEventListener('message', (event) => {
@@ -1843,15 +2059,29 @@
       }
     });
 
+    function handleBrowserFullscreenChange() {
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fullscreenElement) return;
+      if (!STATE.fullscreenApiActive) return;
+
+      STATE.fullscreenApiActive = false;
+      if (STATE.mode === 'fullscreen') {
+        closeFullscreen();
+      }
+    }
+
+    window.addEventListener('fullscreenchange', handleBrowserFullscreenChange);
+    window.addEventListener('webkitfullscreenchange', handleBrowserFullscreenChange);
+
     const resizeObserver = new ResizeObserver(() => {
-      sendHeight(STATE.mode === 'fullscreen' ? window.innerHeight : undefined);
+      sendHeight(STATE.mode === 'fullscreen' ? getFullscreenViewportHeight() : undefined);
     });
     resizeObserver.observe(document.body);
 
     window.addEventListener('load', () => sendHeight());
     window.addEventListener('resize', () => {
       if (STATE.mode === 'fullscreen') {
-        sendHeight(window.innerHeight);
+        sendHeight(getFullscreenViewportHeight());
         triggerMapResize();
         return;
       }
