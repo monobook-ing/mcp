@@ -1037,6 +1037,7 @@
       const cityLine = [property.city, property.country].filter(Boolean).join(', ');
       const classNumber = hotelClassNumber(property.rating);
       const logoUrl = sanitizeUrl(property.brand_logo_url || property.logo_url || property.chain_logo_url || '');
+      const tokenFallbackImageUrl = sanitizeUrl(property.image_url || '');
       const layoutClass = layout === 'fullscreen' ? 'property-card--fullscreen' : 'property-card--inline';
       return `
         <article class="property-card property-card--compact ${layoutClass}" data-property-id="${escapeHtml(property.id)}">
@@ -1051,7 +1052,9 @@
               <span class="inline-brand-token" aria-hidden="true">
                 ${logoUrl
           ? `<img src="${logoUrl}" alt="" />`
-          : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
+          : tokenFallbackImageUrl
+            ? `<img src="${tokenFallbackImageUrl}" alt="" />`
+            : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
               </span>
             </div>
             <h3 class="property-name">${escapeHtml(property.name || 'Hotel')}</h3>
