@@ -17,6 +17,9 @@
       --radius-lg: 18px;
       --radius-md: 14px;
       --pin-active: #1a1a2e;
+      --fullscreen-enter-duration: 520ms;
+      --fullscreen-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --detail-panel-enter-duration: 420ms;
     }
 
     * {
@@ -474,6 +477,13 @@
       background: #fff;
       display: grid;
       grid-template-columns: 380px 1fr;
+      transform: scale(0.985);
+      opacity: 0;
+      transform-origin: center center;
+      transition:
+        transform var(--fullscreen-enter-duration) var(--fullscreen-enter-ease),
+        opacity var(--fullscreen-enter-duration) var(--fullscreen-enter-ease);
+      will-change: transform, opacity;
     }
 
     .fullscreen-overlay-embedded {
@@ -573,6 +583,19 @@
       grid-template-columns: 1fr;
       grid-template-rows: 1fr;
       overflow: hidden;
+      transform: scale(0.985);
+      opacity: 0;
+      transform-origin: center center;
+      transition:
+        transform var(--fullscreen-enter-duration) var(--fullscreen-enter-ease),
+        opacity var(--fullscreen-enter-duration) var(--fullscreen-enter-ease);
+      will-change: transform, opacity;
+    }
+
+    .fullscreen-overlay.fullscreen-overlay-visible,
+    .fullscreen-overlay-constrained.fullscreen-overlay-visible {
+      transform: scale(1);
+      opacity: 1;
     }
 
     .fullscreen-overlay-constrained .fullscreen-map-pane {
@@ -647,7 +670,10 @@
       box-shadow: var(--shadow);
       overflow: hidden;
       transform: translateX(100%);
-      transition: transform 0.24s ease;
+      opacity: 0;
+      transition:
+        transform var(--detail-panel-enter-duration) var(--fullscreen-enter-ease),
+        opacity var(--detail-panel-enter-duration) var(--fullscreen-enter-ease);
       display: grid;
       grid-template-rows: auto 1fr;
       z-index: 4;
@@ -655,6 +681,7 @@
 
     .detail-panel.open {
       transform: translateX(0);
+      opacity: 1;
     }
 
     .detail-close {
@@ -908,6 +935,18 @@
         bottom: 8px;
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fullscreen-overlay,
+      .fullscreen-overlay-constrained,
+      .detail-panel {
+        transition-duration: 1ms !important;
+      }
+
+      .map-pin.active {
+        animation: none;
+      }
+    }
   </style>
 </head>
 
@@ -951,6 +990,7 @@
     const HYDRATION_POLL_MS = 250;
     const HYDRATION_MAX_POLLS = 20;
     const PARENT_EXPAND_ACK_TIMEOUT_MS = 180;
+    const FULLSCREEN_ENTER_DURATION_MS = 520;
     const FULLSCREEN_WIDGET_NAME = 'hotel_map';
 
     function escapeHtml(value) {
@@ -1546,7 +1586,7 @@
       }
     }
 
-    function triggerMapResize() {
+    function triggerMapResize(delayMs = 80) {
       if (!STATE.map || !window.google || !google.maps) return;
 
       setTimeout(() => {
@@ -1555,7 +1595,35 @@
         if (markerInfo && markerInfo.position) {
           STATE.map.panTo(markerInfo.position);
         }
-      }, 80);
+      }, delayMs);
+    }
+
+    function getFullscreenResizeSettleDelayMs() {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return 40;
+      }
+      return FULLSCREEN_ENTER_DURATION_MS + 40;
+    }
+
+    function startFullscreenEnterAnimation(overlay) {
+      if (!overlay) return;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          overlay.classList.add('fullscreen-overlay-visible');
+        });
+      });
+    }
+
+    function resolveDefaultFullscreenPropertyId() {
+      const selected = String(STATE.selectedPropertyId || '');
+      if (selected && STATE.propertyById.has(selected)) {
+        return selected;
+      }
+
+      if (!STATE.properties.length) return '';
+      const firstId = String(STATE.properties[0].id || '');
+      if (!firstId || !STATE.propertyById.has(firstId)) return '';
+      return firstId;
     }
 
     function openDetailPanel(propertyId) {
@@ -1717,6 +1785,7 @@
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
       STATE.bottomSheetCollapsed = false;
+      startFullscreenEnterAnimation(overlay);
 
       const closeBtn = overlay.querySelector('#fullscreenClose');
       if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
@@ -1734,6 +1803,17 @@
       const fullscreenMapSlot = overlay.querySelector('#fullscreenMapSlot');
       moveMapCanvas(fullscreenMapSlot);
       triggerMapResize();
+      triggerMapResize(getFullscreenResizeSettleDelayMs());
+
+      const defaultPropertyId = resolveDefaultFullscreenPropertyId();
+      if (defaultPropertyId) {
+        selectProperty(defaultPropertyId, 'card', 'fullscreen');
+      } else {
+        STATE.selectedPropertyId = '';
+        updateCardStates();
+        updatePinStates();
+        closeDetailPanel();
+      }
 
       if (STATE.selectedPropertyId) {
         scrollCardIntoView(STATE.selectedPropertyId);
