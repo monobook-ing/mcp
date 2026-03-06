@@ -518,6 +518,43 @@
       text-overflow: ellipsis;
     }
 
+    .fullscreen-open-app-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: start;
+      min-height: 40px;
+      max-width: 100%;
+      padding: 0 16px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      border-radius: 999px;
+      background: #111827;
+      color: #fff;
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .fullscreen-open-app-btn:hover {
+      background: #0f172a;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .fullscreen-open-app-btn:active {
+      transform: translateY(0);
+    }
+
+    .fullscreen-open-app-btn[hidden] {
+      display: none;
+    }
+
     .result-count {
       font-size: 18px;
       line-height: 1;
@@ -1080,6 +1117,37 @@
       return externalUrl || resolveDefaultOpenInAppHref();
     }
 
+    function resolveFullscreenOpenInAppExternalHref(accountContext) {
+      const context = accountContext || resolveFullscreenAccountContext();
+      if (!context.hasSingleAccount || context.isMixedAccounts) return '';
+      return sanitizeUrl(context.externalUrl || '');
+    }
+
+    function buildFullscreenOpenInAppLabel(accountContext) {
+      const context = accountContext || resolveFullscreenAccountContext();
+      return context.name ? `Open in ${context.name}` : 'Open in app';
+    }
+
+    function openFullscreenOpenInAppUrl(href) {
+      const cleanHref = sanitizeUrl(href);
+      if (!cleanHref) return;
+
+      const api = window.openai;
+      if (api && typeof api.openExternal === 'function') {
+        Promise.resolve(api.openExternal({ href: cleanHref })).catch(() => {
+        });
+        return;
+      }
+
+      const popup = window.open(cleanHref, '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        try {
+          window.location.href = cleanHref;
+        } catch (_) {
+        }
+      }
+    }
+
     function postWidgetMessage(payload) {
       window.parent.postMessage(payload, '*');
 
@@ -1161,6 +1229,8 @@
       const brandBlock = STATE.fullscreenOverlay.querySelector('#fullscreenBrandBlock');
       const brandLogo = STATE.fullscreenOverlay.querySelector('#fullscreenBrandLogo');
       const brandName = STATE.fullscreenOverlay.querySelector('#fullscreenBrandName');
+      const openInAppBtn = STATE.fullscreenOverlay.querySelector('#fullscreenOpenInAppBtn');
+      const externalHref = resolveFullscreenOpenInAppExternalHref(context);
 
       const showSidebarBrand = context.hasSingleAccount && !context.isMixedAccounts && !!(context.logoUrl || context.name);
       if (brandBlock) {
@@ -1179,6 +1249,21 @@
       }
       if (brandName) {
         brandName.textContent = showSidebarBrand ? (context.name || '') : '';
+      }
+      if (openInAppBtn) {
+        const showOpenInAppBtn = STATE.mode === 'fullscreen' && !!externalHref;
+        openInAppBtn.hidden = !showOpenInAppBtn;
+        if (showOpenInAppBtn) {
+          const label = buildFullscreenOpenInAppLabel(context);
+          const href = resolveOpenInAppHref(context, true);
+          openInAppBtn.textContent = label;
+          openInAppBtn.setAttribute('aria-label', label);
+          openInAppBtn.onclick = () => openFullscreenOpenInAppUrl(href);
+        } else {
+          openInAppBtn.textContent = '';
+          openInAppBtn.removeAttribute('aria-label');
+          openInAppBtn.onclick = null;
+        }
       }
 
       emitFullscreenHeaderContext(context);
@@ -1914,6 +1999,7 @@
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
               <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
+            <button id="fullscreenOpenInAppBtn" class="fullscreen-open-app-btn" type="button" hidden></button>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
           </div>
@@ -1944,6 +2030,7 @@
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
               <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
+            <button id="fullscreenOpenInAppBtn" class="fullscreen-open-app-btn" type="button" hidden></button>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
           </div>

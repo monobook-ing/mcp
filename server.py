@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 from urllib import request, error
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
@@ -112,6 +112,36 @@ MONOSEND_TEMPLATE_ID = "7bc5aec5-cf40-4bec-88c5-d1c00b611fde"
 MONOSEND_FROM_EMAIL = "noreply@monosend.email"
 MONOSEND_API_KEY = os.getenv("API_KEY", "mono_bYguadb30GKyZ49gv0MxnJdgzG2xpHupQNw3Szbf87o")
 MONOSEND_TIMEOUT_SECONDS = 10
+
+
+def _normalize_https_origin(raw: str) -> str | None:
+    value = raw.strip()
+    if not value:
+        return None
+
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        return None
+    if parsed.params or parsed.query or parsed.fragment:
+        return None
+    if parsed.path not in ("", "/"):
+        return None
+
+    return f"https://{parsed.netloc}"
+
+
+PUBLIC_WIDGET_ORIGIN = _normalize_https_origin(os.getenv("PUBLIC_WIDGET_ORIGIN", ""))
+
+
+def _build_hotel_map_resource_meta() -> dict[str, Any]:
+    meta: dict[str, Any] = {
+        "openai/widgetDescription": "Interactive hotel map showing properties as pins with prices. Supports fullscreen mode with detail panels.",
+        "openai/widgetPrefersBorder": False,
+    }
+    if PUBLIC_WIDGET_ORIGIN:
+        meta["ui"] = {"domain": PUBLIC_WIDGET_ORIGIN}
+        meta["openai/widgetDomain"] = PUBLIC_WIDGET_ORIGIN
+    return meta
 
 
 def log_tool_call(
@@ -826,10 +856,7 @@ def services_card_resource() -> str:
     name="Hotel Map Widget",
     description="Interactive map with hotel pins, card list, fullscreen view, and detail panel",
     mime_type=RESOURCE_MIME,
-    meta={
-        "openai/widgetDescription": "Interactive hotel map showing properties as pins with prices. Supports fullscreen mode with detail panels.",
-        "openai/widgetPrefersBorder": False,
-    },
+    meta=_build_hotel_map_resource_meta(),
 )
 def hotel_map_resource() -> str:
     return load_widget("hotel_map")
