@@ -50,7 +50,7 @@
       position: relative;
       border-radius: var(--radius-4xxl);
       overflow: hidden;
-      height: 680px;
+      height: 612px;
       background:
         radial-gradient(900px 480px at 92% -15%, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0) 60%),
         radial-gradient(700px 420px at -20% 100%, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0) 60%),
@@ -864,7 +864,7 @@
 
     @media (max-width: 760px) {
       .map-inline-shell {
-        height: 520px;
+        height: 468px;
       }
 
       .property-card--compact .property-body {
@@ -1167,6 +1167,29 @@
       emitFullscreenHeaderContext(context);
     }
 
+    function syncOpenInAppUrl(accountContext, fullscreenOverride) {
+      const api = window.openai;
+      if (!api || typeof api.setOpenInAppUrl !== 'function') return;
+
+      const context = accountContext || resolveFullscreenAccountContext();
+      const fullscreen = typeof fullscreenOverride === 'boolean'
+        ? fullscreenOverride
+        : STATE.mode === 'fullscreen';
+      const externalUrl = context.hasSingleAccount && !context.isMixedAccounts
+        ? sanitizeUrl(context.externalUrl || '')
+        : '';
+      const href = fullscreen && externalUrl
+        ? externalUrl
+        : String(window.location && window.location.href || '').trim();
+
+      if (!href) return;
+
+      try {
+        api.setOpenInAppUrl({ href });
+      } catch (_) {
+      }
+    }
+
     function emitFullscreenHeaderContext(accountContext, fullscreenOverride) {
       const context = accountContext || resolveFullscreenAccountContext();
       const showSingleAccount = context.hasSingleAccount && !context.isMixedAccounts;
@@ -1174,6 +1197,8 @@
       const fullscreen = typeof fullscreenOverride === 'boolean'
         ? fullscreenOverride
         : STATE.mode === 'fullscreen';
+
+      syncOpenInAppUrl(context, fullscreen);
 
       postWidgetMessage({
         type: 'widget:fullscreen-header-context',
@@ -2269,6 +2294,8 @@
 
       if (STATE.fullscreenOverlay) {
         renderFullscreenCards();
+      } else {
+        emitFullscreenHeaderContext(resolveFullscreenAccountContext());
       }
     }
 
