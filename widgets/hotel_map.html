@@ -1574,7 +1574,7 @@
         card.addEventListener('click', () => {
           const propertyId = card.dataset.propertyId || '';
           if (!propertyId) return;
-          if (mode === 'inline' && isMobileViewport()) {
+          if (mode === 'inline') {
             void openFullscreen({ propertyId, openDetail: true });
             return;
           }
