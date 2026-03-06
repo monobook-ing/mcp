@@ -21,6 +21,7 @@
       --fullscreen-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
       --detail-panel-enter-duration: 420ms;
       --mobile-chat-clearance: 148px;
+      --mobile-property-list-gap: 10px;
       --fullscreen-map-inset: 14px;
       --fullscreen-map-radius: 32px;
     }
@@ -469,7 +470,7 @@
     }
 
     .fullscreen-sidebar {
-      border-right: 1px solid var(--line);
+      /*border-right: 1px solid var(--line);*/
       background: #fff;
       overflow: hidden;
       display: grid;
@@ -567,10 +568,12 @@
       position: relative;
       min-width: 0;
       min-height: 0;
-      background: #f8fafc;
+      /*background: #f8fafc;*/
       grid-column: 2;
       grid-row: 1;
-      padding: var(--fullscreen-map-inset);
+      padding-right: var(--fullscreen-map-inset);
+      padding-top: var(--fullscreen-map-inset);
+      padding-bottom: var(--fullscreen-map-inset);
     }
 
     .fullscreen-map-slot {
@@ -951,7 +954,7 @@
         position: absolute;
         left: 0;
         right: 0;
-        bottom: calc(var(--mobile-chat-clearance) + env(safe-area-inset-bottom));
+        bottom: calc(var(--mobile-chat-clearance) + env(safe-area-inset-bottom) + var(--mobile-property-list-gap));
         top: auto;
         display: block;
         max-height: none;
@@ -2194,7 +2197,6 @@
           <div class="fullscreen-header">
             <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-              // <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
@@ -2224,7 +2226,6 @@
           <div class="fullscreen-header">
             <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-              // <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
