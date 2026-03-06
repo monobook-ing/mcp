@@ -483,20 +483,11 @@
       background: #fff;
     }
 
-    .fullscreen-header-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
     .fullscreen-brand-block {
       display: flex;
       align-items: center;
       gap: 10px;
       min-height: 42px;
-      min-width: 0;
-      flex: 1 1 auto;
     }
 
     .fullscreen-brand-block.hidden {
@@ -525,49 +516,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .fullscreen-open-account-btn {
-      height: 42px;
-      max-width: 100%;
-      border-radius: 999px;
-      border: 1px solid rgba(15, 23, 42, 0.15);
-      background: #fff;
-      color: #111827;
-      font-size: 15px;
-      line-height: 1;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      padding: 0 16px 0 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      white-space: nowrap;
-      flex: 0 1 auto;
-    }
-
-    .fullscreen-open-account-btn.hidden {
-      display: none;
-    }
-
-    .fullscreen-open-account-btn span {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .fullscreen-open-account-logo {
-      width: 20px;
-      height: 20px;
-      border-radius: 6px;
-      object-fit: contain;
-      display: block;
-      flex-shrink: 0;
-    }
-
-    .fullscreen-open-account-logo.hidden {
-      display: none;
     }
 
     .result-count {
@@ -973,16 +921,6 @@
         grid-row: 2;
       }
 
-      .fullscreen-header-top {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .fullscreen-open-account-btn {
-        width: 100%;
-        justify-content: center;
-      }
-
       .detail-panel {
         right: 8px;
         left: 8px;
@@ -1206,9 +1144,6 @@
       const brandBlock = STATE.fullscreenOverlay.querySelector('#fullscreenBrandBlock');
       const brandLogo = STATE.fullscreenOverlay.querySelector('#fullscreenBrandLogo');
       const brandName = STATE.fullscreenOverlay.querySelector('#fullscreenBrandName');
-      const openBtn = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtn');
-      const openBtnLabel = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtnLabel');
-      const openBtnLogo = STATE.fullscreenOverlay.querySelector('#fullscreenOpenAccountBtnLogo');
 
       const showSidebarBrand = context.hasSingleAccount && !context.isMixedAccounts && !!(context.logoUrl || context.name);
       if (brandBlock) {
@@ -1227,32 +1162,6 @@
       }
       if (brandName) {
         brandName.textContent = showSidebarBrand ? (context.name || '') : '';
-      }
-
-      const showOpenButton = context.hasSingleAccount && !context.isMixedAccounts && !!context.externalUrl;
-      if (openBtn) {
-        openBtn.classList.toggle('hidden', !showOpenButton);
-        openBtn.onclick = null;
-      }
-      if (openBtnLabel) {
-        const accountLabel = context.name || 'account';
-        openBtnLabel.textContent = `Open in ${accountLabel}`;
-      }
-      if (openBtnLogo) {
-        if (showOpenButton && context.logoUrl) {
-          openBtnLogo.src = context.logoUrl;
-          openBtnLogo.alt = '';
-          openBtnLogo.classList.remove('hidden');
-        } else {
-          openBtnLogo.removeAttribute('src');
-          openBtnLogo.alt = '';
-          openBtnLogo.classList.add('hidden');
-        }
-      }
-      if (showOpenButton && openBtn) {
-        openBtn.onclick = () => {
-          window.open(context.externalUrl, '_blank', 'noopener,noreferrer');
-        };
       }
 
       emitFullscreenHeaderContext(context);
@@ -1967,15 +1876,9 @@
       overlay.innerHTML = `
         <aside class="fullscreen-sidebar">
           <div class="fullscreen-header">
-            <div class="fullscreen-header-top">
-              <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
-                <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-                <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
-              </div>
-              <button id="fullscreenOpenAccountBtn" class="fullscreen-open-account-btn hidden" type="button" aria-label="Open account website">
-                <img id="fullscreenOpenAccountBtnLogo" class="fullscreen-open-account-logo hidden" alt="" />
-                <span id="fullscreenOpenAccountBtnLabel"></span>
-              </button>
+            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
@@ -2003,15 +1906,9 @@
           <button id="bottomSheetHandle" class="bottom-sheet-handle" type="button" aria-label="Toggle property list"></button>
           <span class="handle-bar"></span>
           <div class="fullscreen-header">
-            <div class="fullscreen-header-top">
-              <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
-                <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-                <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
-              </div>
-              <button id="fullscreenOpenAccountBtn" class="fullscreen-open-account-btn hidden" type="button" aria-label="Open account website">
-                <img id="fullscreenOpenAccountBtnLogo" class="fullscreen-open-account-logo hidden" alt="" />
-                <span id="fullscreenOpenAccountBtnLabel"></span>
-              </button>
+            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
