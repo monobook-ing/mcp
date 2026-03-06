@@ -20,6 +20,7 @@
       --fullscreen-enter-duration: 520ms;
       --fullscreen-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
       --detail-panel-enter-duration: 420ms;
+      --mobile-chat-clearance: 148px;
     }
 
     * {
@@ -689,19 +690,19 @@
     .detail-back {
       display: none;
       position: absolute;
-      left: 14px;
-      top: 14px;
+      left: 24px;
+      top: 18px;
       z-index: 3;
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       border-radius: 999px;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      background: rgba(255, 255, 255, 0.96);
+      border: 0;
+      background: rgba(255, 255, 255, 0.98);
       color: #111827;
       cursor: pointer;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       padding: 0;
@@ -944,7 +945,7 @@
         position: absolute;
         left: 0;
         right: 0;
-        bottom: 0;
+        bottom: calc(var(--mobile-chat-clearance) + env(safe-area-inset-bottom));
         top: auto;
         display: block;
         max-height: none;
@@ -1066,10 +1067,10 @@
 
       .detail-back {
         display: inline-flex;
-        left: max(14px, calc(env(safe-area-inset-left) + 8px));
-        top: max(14px, calc(env(safe-area-inset-top) + 8px));
-        width: 56px;
-        height: 56px;
+        left: max(24px, calc(env(safe-area-inset-left) + 16px));
+        top: max(18px, calc(env(safe-area-inset-top) + 10px));
+        width: 52px;
+        height: 52px;
       }
 
       .detail-carousel {
@@ -1078,7 +1079,7 @@
       }
 
       .detail-body {
-        padding: 20px 20px max(28px, calc(env(safe-area-inset-bottom) + 16px));
+        padding: 20px 20px calc(var(--mobile-chat-clearance) + env(safe-area-inset-bottom) + 28px);
         gap: 12px;
       }
 
@@ -1137,6 +1138,7 @@
       detailImages: [],
       detailIndex: 0,
       fullscreenIntent: null,
+      preFullscreenSelectionId: '',
       hydrationTimeoutId: null,
       hydrationPollId: null,
       fullscreenSource: 'none',
@@ -1146,14 +1148,16 @@
       overlayAction: '',
       lastOpenInAppHref: '',
       parentExpandAckTimeoutId: null,
-      hostFullscreenMaxWidth: 0,
-      hostFullscreenMaxHeight: 0,
+      parentCollapseFallbackId: null,
+      fullscreenViewportMaxWidth: 0,
+      fullscreenViewportMaxHeight: 0,
     };
 
     const HYDRATION_TIMEOUT_MS = 5000;
     const HYDRATION_POLL_MS = 250;
     const HYDRATION_MAX_POLLS = 20;
     const PARENT_EXPAND_ACK_TIMEOUT_MS = 180;
+    const PARENT_COLLAPSE_FALLBACK_MS = 240;
     const FULLSCREEN_ENTER_DURATION_MS = 520;
     const HOST_FULLSCREEN_EXIT_DELTA_PX = 220;
     const FULLSCREEN_WIDGET_NAME = 'hotel_map';
@@ -1237,6 +1241,41 @@
       const intent = normalizeFullscreenIntent(STATE.fullscreenIntent);
       STATE.fullscreenIntent = null;
       return intent;
+    }
+
+    function rememberInlineSelectionForFullscreen(intent) {
+      if (!isMobileViewport()) {
+        STATE.preFullscreenSelectionId = '';
+        return;
+      }
+
+      const propertyId = String(intent && intent.propertyId || '').trim();
+      const fallbackId = String(STATE.selectedPropertyId || '').trim();
+      const snapshotId = propertyId || fallbackId;
+      STATE.preFullscreenSelectionId = snapshotId && STATE.propertyById.has(snapshotId) ? snapshotId : '';
+    }
+
+    function restoreInlineSelectionAfterFullscreenClose() {
+      const restoreId = String(STATE.preFullscreenSelectionId || '').trim();
+      STATE.preFullscreenSelectionId = '';
+
+      if (!isMobileViewport()) return;
+
+      STATE.selectedPropertyId = restoreId && STATE.propertyById.has(restoreId) ? restoreId : '';
+      updateCardStates();
+      updatePinStates();
+
+      if (STATE.selectedPropertyId) {
+        requestAnimationFrame(() => {
+          scrollCardIntoView(STATE.selectedPropertyId);
+        });
+      }
+    }
+
+    function clearParentCollapseFallback() {
+      if (!STATE.parentCollapseFallbackId) return;
+      clearTimeout(STATE.parentCollapseFallbackId);
+      STATE.parentCollapseFallbackId = null;
     }
 
     function buildSearchBadgeText() {
@@ -2036,15 +2075,16 @@
       }
     }
 
-    function resetHostFullscreenViewportBounds() {
-      STATE.hostFullscreenMaxWidth = 0;
-      STATE.hostFullscreenMaxHeight = 0;
+    function resetFullscreenViewportBounds() {
+      STATE.fullscreenViewportMaxWidth = 0;
+      STATE.fullscreenViewportMaxHeight = 0;
     }
 
-    function updateHostFullscreenViewportBounds() {
-      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host') return;
-      STATE.hostFullscreenMaxWidth = Math.max(STATE.hostFullscreenMaxWidth, window.innerWidth || 0);
-      STATE.hostFullscreenMaxHeight = Math.max(STATE.hostFullscreenMaxHeight, window.innerHeight || 0);
+    function updateFullscreenViewportBounds() {
+      if (STATE.mode !== 'fullscreen') return;
+      if (STATE.fullscreenSource !== 'host' && STATE.fullscreenSource !== 'parent') return;
+      STATE.fullscreenViewportMaxWidth = Math.max(STATE.fullscreenViewportMaxWidth, window.innerWidth || 0);
+      STATE.fullscreenViewportMaxHeight = Math.max(STATE.fullscreenViewportMaxHeight, window.innerHeight || 0);
     }
 
     function normalizeDisplayModeValue(rawMode) {
@@ -2084,32 +2124,48 @@
     function handleHostDisplayModeUpdate(mode) {
       const normalized = normalizeDisplayModeValue(mode);
       if (!normalized) return;
-      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host') return;
+      if (STATE.mode !== 'fullscreen' || !STATE.fullscreenOverlay) return;
+      if (STATE.fullscreenSource !== 'host' && STATE.fullscreenSource !== 'parent') return;
+
       if (normalized !== 'fullscreen') {
+        closeActiveEmbeddedFullscreen();
+        return;
+      }
+
+      updateFullscreenViewportBounds();
+    }
+
+    function closeActiveEmbeddedFullscreen() {
+      if (STATE.fullscreenSource === 'host') {
         closeFullscreenHostMode();
+        return;
+      }
+      if (STATE.fullscreenSource === 'parent') {
+        closeFullscreenParentMode();
       }
     }
 
-    function maybeCloseHostFullscreenFromViewport() {
-      if (STATE.mode !== 'fullscreen' || STATE.fullscreenSource !== 'host' || !STATE.fullscreenOverlay) return;
+    function maybeCloseEmbeddedFullscreenFromViewport() {
+      if (STATE.mode !== 'fullscreen' || !STATE.fullscreenOverlay) return;
+      if (STATE.fullscreenSource !== 'host' && STATE.fullscreenSource !== 'parent') return;
 
       const hostMode = readHostDisplayMode();
       if (hostMode) {
         if (hostMode !== 'fullscreen') {
-          closeFullscreenHostMode();
+          closeActiveEmbeddedFullscreen();
         } else {
-          updateHostFullscreenViewportBounds();
+          updateFullscreenViewportBounds();
         }
         return;
       }
 
-      updateHostFullscreenViewportBounds();
-      if (!STATE.hostFullscreenMaxWidth || !STATE.hostFullscreenMaxHeight) return;
+      updateFullscreenViewportBounds();
+      if (!STATE.fullscreenViewportMaxWidth || !STATE.fullscreenViewportMaxHeight) return;
 
-      const widthDrop = STATE.hostFullscreenMaxWidth - (window.innerWidth || 0);
-      const heightDrop = STATE.hostFullscreenMaxHeight - (window.innerHeight || 0);
+      const widthDrop = STATE.fullscreenViewportMaxWidth - (window.innerWidth || 0);
+      const heightDrop = STATE.fullscreenViewportMaxHeight - (window.innerHeight || 0);
       if (widthDrop >= HOST_FULLSCREEN_EXIT_DELTA_PX || heightDrop >= HOST_FULLSCREEN_EXIT_DELTA_PX) {
-        closeFullscreenHostMode();
+        closeActiveEmbeddedFullscreen();
       }
     }
 
@@ -2230,9 +2286,10 @@
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
       STATE.bottomSheetCollapsed = false;
-      if (source === 'host') {
-        resetHostFullscreenViewportBounds();
-        updateHostFullscreenViewportBounds();
+      clearParentCollapseFallback();
+      if (source === 'host' || source === 'parent') {
+        resetFullscreenViewportBounds();
+        updateFullscreenViewportBounds();
       }
       startFullscreenEnterAnimation(overlay);
 
@@ -2280,12 +2337,12 @@
         scrollCardIntoView(STATE.selectedPropertyId);
       }
 
-      if (source === 'host') {
+      if (source === 'host' || source === 'parent') {
         requestAnimationFrame(() => {
-          updateHostFullscreenViewportBounds();
+          updateFullscreenViewportBounds();
         });
         setTimeout(() => {
-          updateHostFullscreenViewportBounds();
+          updateFullscreenViewportBounds();
         }, 200);
       }
 
@@ -2359,7 +2416,9 @@
 
     async function openFullscreen(intent) {
       if (STATE.mode === 'fullscreen') return;
-      STATE.fullscreenIntent = normalizeFullscreenIntent(intent);
+      const normalizedIntent = normalizeFullscreenIntent(intent);
+      STATE.fullscreenIntent = normalizedIntent;
+      rememberInlineSelectionForFullscreen(normalizedIntent);
       const hostFullscreenWorked = await requestHostDisplayMode('fullscreen');
       if (hostFullscreenWorked) {
         openFullscreenHostMode();
@@ -2371,6 +2430,8 @@
     function closeFullscreenParentMode() {
       if (STATE.fullscreenSource !== 'parent' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
+      clearParentCollapseFallback();
+      clearOverlayRequestState();
 
       closeDetailPanel();
 
@@ -2382,7 +2443,9 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      resetFullscreenViewportBounds();
       setInlineShellHidden(false);
+      restoreInlineSelectionAfterFullscreenClose();
       emitFullscreenHeaderContext(resolveFullscreenAccountContext(), false);
 
       triggerMapResize();
@@ -2392,6 +2455,8 @@
     function closeFullscreenIframeFallback() {
       if (STATE.fullscreenSource !== 'iframe' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
+      clearParentCollapseFallback();
+      clearOverlayRequestState();
 
       closeDetailPanel();
 
@@ -2403,7 +2468,9 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      resetFullscreenViewportBounds();
       setInlineShellHidden(false);
+      restoreInlineSelectionAfterFullscreenClose();
       emitFullscreenHeaderContext(resolveFullscreenAccountContext(), false);
 
       triggerMapResize();
@@ -2413,6 +2480,8 @@
     function closeFullscreenConstrainedMode() {
       if (STATE.fullscreenSource !== 'constrained' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
+      clearParentCollapseFallback();
+      clearOverlayRequestState();
 
       closeDetailPanel();
 
@@ -2425,7 +2494,9 @@
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
       STATE.bottomSheetCollapsed = false;
+      resetFullscreenViewportBounds();
       setInlineShellHidden(false);
+      restoreInlineSelectionAfterFullscreenClose();
       emitFullscreenHeaderContext(resolveFullscreenAccountContext(), false);
 
       triggerMapResize();
@@ -2435,6 +2506,8 @@
     function closeFullscreenHostMode() {
       if (STATE.fullscreenSource !== 'host' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
+      clearParentCollapseFallback();
+      clearOverlayRequestState();
 
       closeDetailPanel();
 
@@ -2446,8 +2519,9 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
-      resetHostFullscreenViewportBounds();
+      resetFullscreenViewportBounds();
       setInlineShellHidden(false);
+      restoreInlineSelectionAfterFullscreenClose();
       emitFullscreenHeaderContext(resolveFullscreenAccountContext(), false);
 
       triggerMapResize();
@@ -2458,7 +2532,13 @@
       const requestId = createOverlayRequestId('collapse');
       STATE.overlayAction = 'collapse';
       STATE.overlayRequestId = requestId;
+      clearParentCollapseFallback();
       postOverlayMessage('widget:collapse', requestId);
+      STATE.parentCollapseFallbackId = setTimeout(() => {
+        if (STATE.fullscreenSource === 'parent' && STATE.fullscreenOverlay) {
+          closeFullscreenParentMode();
+        }
+      }, PARENT_COLLAPSE_FALLBACK_MS);
     }
 
     function closeFullscreen() {
@@ -2714,14 +2794,14 @@
     window.addEventListener('webkitfullscreenchange', handleBrowserFullscreenChange);
 
     const resizeObserver = new ResizeObserver(() => {
-      maybeCloseHostFullscreenFromViewport();
+      maybeCloseEmbeddedFullscreenFromViewport();
       sendHeight(STATE.mode === 'fullscreen' ? getFullscreenViewportHeight() : undefined);
     });
     resizeObserver.observe(document.body);
 
     window.addEventListener('load', () => sendHeight());
     window.addEventListener('resize', () => {
-      maybeCloseHostFullscreenFromViewport();
+      maybeCloseEmbeddedFullscreenFromViewport();
       if (STATE.mode === 'fullscreen') {
         sendHeight(getFullscreenViewportHeight());
         triggerMapResize();
