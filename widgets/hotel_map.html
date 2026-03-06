@@ -21,6 +21,8 @@
       --fullscreen-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
       --detail-panel-enter-duration: 420ms;
       --mobile-chat-clearance: 148px;
+      --fullscreen-map-inset: 14px;
+      --fullscreen-map-radius: 32px;
     }
 
     * {
@@ -478,7 +480,7 @@
 
     .fullscreen-header {
       padding: 18px 14px 14px;
-      border-bottom: 1px solid var(--line);
+      /*border-bottom: 1px solid var(--line);*/
       display: grid;
       gap: 12px;
       background: #fff;
@@ -496,13 +498,13 @@
     }
 
     .fullscreen-brand-logo {
-      width: 42px;
+      /*width: 42px;*/
       height: 42px;
-      border-radius: 10px;
+/*      border-radius: 10px;
       border: 1px solid rgba(15, 23, 42, 0.14);
-      background: #fff;
+      background: #fff;*/
       object-fit: contain;
-      padding: 6px;
+      /*padding: 6px;*/
       display: block;
       flex-shrink: 0;
     }
@@ -551,7 +553,7 @@
       display: grid;
       gap: 10px;
       align-content: start;
-      background: #f9fafb;
+      /*background: #f9fafb;*/
     }
 
     .fullscreen-cards .property-card--compact {
@@ -568,11 +570,15 @@
       background: #f8fafc;
       grid-column: 2;
       grid-row: 1;
+      padding: var(--fullscreen-map-inset);
     }
 
     .fullscreen-map-slot {
       position: absolute;
-      inset: 0;
+      inset: var(--fullscreen-map-inset);
+      border-radius: var(--fullscreen-map-radius);
+      overflow: hidden;
+      background: #e5e7eb;
     }
 
     .fullscreen-overlay-constrained {
@@ -973,11 +979,15 @@
       .fullscreen-overlay .fullscreen-map-pane,
       .fullscreen-overlay-constrained .fullscreen-map-pane {
         min-height: 100%;
+        padding: 0;
       }
 
       .fullscreen-overlay .fullscreen-map-slot,
       .fullscreen-overlay-constrained .fullscreen-map-slot {
         z-index: 0;
+        inset: 0;
+        border-radius: 0;
+        background: transparent;
       }
 
       .fullscreen-overlay .fullscreen-map-pane::after,
@@ -2184,7 +2194,7 @@
           <div class="fullscreen-header">
             <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
+              // <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
@@ -2214,7 +2224,7 @@
           <div class="fullscreen-header">
             <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
               <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
-              <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
+              // <p id="fullscreenBrandName" class="fullscreen-brand-name"></p>
             </div>
             <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
