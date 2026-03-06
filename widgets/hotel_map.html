@@ -1162,6 +1162,7 @@
       lastOpenInAppHref: '',
       parentExpandAckTimeoutId: null,
       parentCollapseFallbackId: null,
+      fullscreenDisplayModePollId: null,
       fullscreenViewportMaxWidth: 0,
       fullscreenViewportMaxHeight: 0,
     };
@@ -1172,7 +1173,8 @@
     const PARENT_EXPAND_ACK_TIMEOUT_MS = 180;
     const PARENT_COLLAPSE_FALLBACK_MS = 240;
     const FULLSCREEN_ENTER_DURATION_MS = 520;
-    const HOST_FULLSCREEN_EXIT_DELTA_PX = 220;
+    const HOST_FULLSCREEN_EXIT_DELTA_PX = 100;
+    const FULLSCREEN_DISPLAY_MODE_POLL_MS = 350;
     const FULLSCREEN_WIDGET_NAME = 'hotel_map';
 
     function escapeHtml(value) {
@@ -2158,6 +2160,30 @@
       }
     }
 
+    function startFullscreenDisplayModePoll() {
+      stopFullscreenDisplayModePoll();
+      STATE.fullscreenDisplayModePollId = setInterval(() => {
+        if (STATE.mode !== 'fullscreen' || !STATE.fullscreenOverlay) {
+          stopFullscreenDisplayModePoll();
+          return;
+        }
+        if (STATE.fullscreenSource !== 'host' && STATE.fullscreenSource !== 'parent') {
+          stopFullscreenDisplayModePoll();
+          return;
+        }
+        const hostMode = readHostDisplayMode();
+        if (hostMode && hostMode !== 'fullscreen') {
+          closeActiveEmbeddedFullscreen();
+        }
+      }, FULLSCREEN_DISPLAY_MODE_POLL_MS);
+    }
+
+    function stopFullscreenDisplayModePoll() {
+      if (!STATE.fullscreenDisplayModePollId) return;
+      clearInterval(STATE.fullscreenDisplayModePollId);
+      STATE.fullscreenDisplayModePollId = null;
+    }
+
     function maybeCloseEmbeddedFullscreenFromViewport() {
       if (STATE.mode !== 'fullscreen' || !STATE.fullscreenOverlay) return;
       if (STATE.fullscreenSource !== 'host' && STATE.fullscreenSource !== 'parent') return;
@@ -2301,6 +2327,7 @@
       if (source === 'host' || source === 'parent') {
         resetFullscreenViewportBounds();
         updateFullscreenViewportBounds();
+        startFullscreenDisplayModePoll();
       }
       startFullscreenEnterAnimation(overlay);
 
@@ -2442,6 +2469,7 @@
       if (STATE.fullscreenSource !== 'parent' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
       closeDetailPanel();
@@ -2467,6 +2495,7 @@
       if (STATE.fullscreenSource !== 'iframe' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
       closeDetailPanel();
@@ -2492,6 +2521,7 @@
       if (STATE.fullscreenSource !== 'constrained' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
       closeDetailPanel();
@@ -2518,6 +2548,7 @@
       if (STATE.fullscreenSource !== 'host' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
       closeDetailPanel();
@@ -2819,6 +2850,13 @@
         return;
       }
       sendHeight();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      maybeCloseEmbeddedFullscreenFromViewport();
+    });
+    window.addEventListener('focus', () => {
+      maybeCloseEmbeddedFullscreenFromViewport();
     });
 
     startHydrationChecks();
