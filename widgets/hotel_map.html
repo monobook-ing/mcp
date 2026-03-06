@@ -977,6 +977,7 @@
       bottomSheetCollapsed: false,
       overlayRequestId: '',
       overlayAction: '',
+      lastOpenInAppHref: '',
       parentExpandAckTimeoutId: null,
       hostFullscreenMaxWidth: 0,
       hostFullscreenMaxHeight: 0,
@@ -1061,6 +1062,22 @@
       const ctx = STATE.queryContext || {};
       const fallback = String(ctx.hotel_name || ctx.city || 'Map results').trim();
       return fallback || 'Map results';
+    }
+
+    function resolveDefaultOpenInAppHref() {
+      return String(window.location && window.location.href || '').trim();
+    }
+
+    function resolveOpenInAppHref(accountContext, fullscreenOverride) {
+      const context = accountContext || resolveFullscreenAccountContext();
+      const fullscreen = typeof fullscreenOverride === 'boolean'
+        ? fullscreenOverride
+        : STATE.mode === 'fullscreen';
+      const externalUrl = fullscreen && context.hasSingleAccount && !context.isMixedAccounts
+        ? sanitizeUrl(context.externalUrl || '')
+        : '';
+
+      return externalUrl || resolveDefaultOpenInAppHref();
     }
 
     function postWidgetMessage(payload) {
@@ -1171,21 +1188,13 @@
       const api = window.openai;
       if (!api || typeof api.setOpenInAppUrl !== 'function') return;
 
-      const context = accountContext || resolveFullscreenAccountContext();
-      const fullscreen = typeof fullscreenOverride === 'boolean'
-        ? fullscreenOverride
-        : STATE.mode === 'fullscreen';
-      const externalUrl = context.hasSingleAccount && !context.isMixedAccounts
-        ? sanitizeUrl(context.externalUrl || '')
-        : '';
-      const href = fullscreen && externalUrl
-        ? externalUrl
-        : String(window.location && window.location.href || '').trim();
-
+      const href = resolveOpenInAppHref(accountContext, fullscreenOverride);
       if (!href) return;
+      if (href === STATE.lastOpenInAppHref) return;
 
       try {
         api.setOpenInAppUrl({ href });
+        STATE.lastOpenInAppHref = href;
       } catch (_) {
       }
     }
