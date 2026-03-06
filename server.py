@@ -139,9 +139,17 @@ def _build_hotel_map_resource_meta() -> dict[str, Any]:
         "openai/widgetPrefersBorder": False,
     }
     if PUBLIC_WIDGET_ORIGIN:
-        meta["ui"] = {"domain": PUBLIC_WIDGET_ORIGIN}
         meta["openai/widgetDomain"] = PUBLIC_WIDGET_ORIGIN
     return meta
+
+
+def _build_hotel_map_resource_app_config() -> dict[str, Any] | None:
+    if not PUBLIC_WIDGET_ORIGIN:
+        return None
+    return {
+        "domain": PUBLIC_WIDGET_ORIGIN,
+        "prefersBorder": False,
+    }
 
 
 def log_tool_call(
@@ -857,6 +865,7 @@ def services_card_resource() -> str:
     description="Interactive map with hotel pins, card list, fullscreen view, and detail panel",
     mime_type=RESOURCE_MIME,
     meta=_build_hotel_map_resource_meta(),
+    app=_build_hotel_map_resource_app_config(),
 )
 def hotel_map_resource() -> str:
     return load_widget("hotel_map")
