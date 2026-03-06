@@ -126,56 +126,6 @@
       transform: scale(1);
     }
 
-    .open-in-app-btn {
-      position: absolute;
-      right: 66px;
-      top: 14px;
-      z-index: 7;
-      height: 44px;
-      border: 1px solid rgba(17, 24, 39, 0.12);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.9);
-      color: #111827;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 14px 0 6px;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      white-space: nowrap;
-      transition: all 0.15s ease;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-    }
-
-    .open-in-app-btn:hover {
-      background: #fff;
-      transform: scale(1.03);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    .open-in-app-btn:active {
-      transform: scale(1);
-    }
-
-    .open-in-app-btn.hidden {
-      display: none;
-    }
-
-    .open-in-app-logo {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      object-fit: contain;
-      background: #fff;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      flex-shrink: 0;
-    }
-
     .expand-btn-icon {
       display: inline-flex;
       width: 20px;
@@ -1305,10 +1255,6 @@
           <div id="inlineMapShell" class="map-inline-shell">
             <div id="mapCanvas" class="map-canvas" role="img" aria-label="Hotel map"></div>
             <div id="mapStatus" class="map-overlay-status">Loading map...</div>
-            <a id="openInAppBtn" class="open-in-app-btn hidden" target="_blank" rel="noopener noreferrer">
-              <img id="openInAppLogo" class="open-in-app-logo" alt="" />
-              <span id="openInAppLabel"></span>
-            </a>
             <button id="expandBtn" class="expand-btn" type="button" aria-label="Open fullscreen map">
               <span class="expand-btn-icon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-left-right-icon lucide-chevrons-left-right"><path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/></svg>
@@ -1337,24 +1283,6 @@
       container.innerHTML = STATE.properties.map((property) => buildPropertyCard(property, 'inline')).join('');
       bindCardClicks(container, 'inline');
       updateCardStates();
-    }
-
-    function renderOpenInAppButton() {
-      const btn = document.getElementById('openInAppBtn');
-      const logo = document.getElementById('openInAppLogo');
-      const label = document.getElementById('openInAppLabel');
-      if (!btn || !logo || !label) return;
-
-      const context = resolveFullscreenAccountContext();
-      const show = context.hasSingleAccount && !context.isMixedAccounts && !!(context.logoUrl && context.externalUrl);
-
-      btn.classList.toggle('hidden', !show);
-      if (show) {
-        btn.href = context.externalUrl;
-        logo.src = context.logoUrl;
-        logo.alt = context.name ? `${context.name} logo` : 'Logo';
-        label.textContent = context.name ? `Open in ${context.name}` : 'Open';
-      }
     }
 
     function renderFullscreenCards() {
@@ -2348,7 +2276,6 @@
       renderShell();
       setInlineShellHidden(STATE.mode === 'fullscreen' && (STATE.fullscreenSource === 'parent' || STATE.fullscreenSource === 'host'));
       renderInlineCards();
-      renderOpenInAppButton();
 
       ensureMapReady()
         .then(() => {
