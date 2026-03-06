@@ -686,6 +686,32 @@
       line-height: 1;
     }
 
+    .detail-back {
+      display: none;
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 3;
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      color: #111827;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 0;
+    }
+
+    .detail-back svg {
+      width: 24px;
+      height: 24px;
+    }
+
     .detail-carousel {
       position: relative;
       height: 215px;
@@ -968,7 +994,7 @@
 
       .fullscreen-overlay .detail-panel,
       .fullscreen-overlay-constrained .detail-panel {
-        z-index: 2;
+        z-index: 8;
       }
 
       .fullscreen-cards {
@@ -1026,11 +1052,47 @@
       }
 
       .detail-panel {
-        right: 8px;
-        left: 8px;
+        inset: 0;
         width: auto;
-        top: 8px;
-        bottom: 8px;
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+        background: #fff;
+      }
+
+      .detail-close {
+        display: none;
+      }
+
+      .detail-back {
+        display: inline-flex;
+        left: max(14px, calc(env(safe-area-inset-left) + 8px));
+        top: max(14px, calc(env(safe-area-inset-top) + 8px));
+        width: 56px;
+        height: 56px;
+      }
+
+      .detail-carousel {
+        height: min(42vh, 360px);
+        min-height: 260px;
+      }
+
+      .detail-body {
+        padding: 20px 20px max(28px, calc(env(safe-area-inset-bottom) + 16px));
+        gap: 12px;
+      }
+
+      .photo-counter {
+        left: 14px;
+        bottom: 14px;
+      }
+
+      .carousel-prev {
+        left: 14px;
+      }
+
+      .carousel-next {
+        right: 14px;
       }
     }
 
@@ -1074,6 +1136,7 @@
       detailPropertyId: '',
       detailImages: [],
       detailIndex: 0,
+      fullscreenIntent: null,
       hydrationTimeoutId: null,
       hydrationPollId: null,
       fullscreenSource: 'none',
@@ -1150,6 +1213,30 @@
 
     function formatAddress(property) {
       return [property.street, property.city, property.state, property.country].filter(Boolean).join(', ');
+    }
+
+    function isMobileViewport() {
+      return !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+    }
+
+    function normalizeFullscreenIntent(rawIntent) {
+      const intent = rawIntent && typeof rawIntent === 'object' ? rawIntent : null;
+      const rawPropertyId = String(intent && intent.propertyId || '').trim();
+      const propertyId = rawPropertyId && STATE.propertyById.has(rawPropertyId) ? rawPropertyId : '';
+      return {
+        propertyId,
+        openDetail: !!propertyId && !!(intent && intent.openDetail),
+        clearSelection: !propertyId && (
+          (intent && intent.clearSelection === true)
+          || (!intent && isMobileViewport())
+        ),
+      };
+    }
+
+    function consumeFullscreenIntent() {
+      const intent = normalizeFullscreenIntent(STATE.fullscreenIntent);
+      STATE.fullscreenIntent = null;
+      return intent;
     }
 
     function buildSearchBadgeText() {
@@ -1380,7 +1467,9 @@
 
       const expandBtn = document.getElementById('expandBtn');
       if (expandBtn) {
-        expandBtn.addEventListener('click', openFullscreen);
+        expandBtn.addEventListener('click', () => {
+          void openFullscreen();
+        });
       }
     }
 
@@ -1431,6 +1520,10 @@
         card.addEventListener('click', () => {
           const propertyId = card.dataset.propertyId || '';
           if (!propertyId) return;
+          if (mode === 'inline' && isMobileViewport()) {
+            void openFullscreen({ propertyId, openDetail: true });
+            return;
+          }
           selectProperty(propertyId, 'card', mode);
         });
       });
@@ -1632,7 +1725,7 @@
     function scrollCardIntoView(propertyId) {
       if (!propertyId) return;
       const safeId = escapeSelectorValue(propertyId);
-      const isMobile = !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+      const isMobile = isMobileViewport();
 
       if (STATE.mode === 'fullscreen' && STATE.fullscreenOverlay) {
         const card = STATE.fullscreenOverlay.querySelector(`#fullscreenCards .property-card[data-property-id="${safeId}"]`);
@@ -1724,6 +1817,11 @@
       STATE.detailIndex = 0;
 
       panel.innerHTML = `
+        <button class="detail-back" type="button" aria-label="Back to map">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+        </button>
         <button class="detail-close" type="button" aria-label="Close details">✕</button>
         <div class="detail-carousel">
           <img id="detailPhoto" src="" class="detail-photo" alt="${escapeHtml(property.name || 'Hotel image')}" />
@@ -1791,6 +1889,11 @@
       if (!panel) return;
       panel.classList.remove('open');
       panel.innerHTML = '';
+      if (STATE.mode === 'fullscreen' && STATE.selectedPropertyId) {
+        requestAnimationFrame(() => {
+          scrollCardIntoView(STATE.selectedPropertyId);
+        });
+      }
     }
 
     async function onViewRooms(propertyId) {
@@ -1819,11 +1922,13 @@
     }
 
     function bindDetailPanelActions(panel) {
+      const backBtn = panel.querySelector('.detail-back');
       const closeBtn = panel.querySelector('.detail-close');
       const prevBtn = panel.querySelector('.carousel-prev');
       const nextBtn = panel.querySelector('.carousel-next');
       const viewRoomsBtn = panel.querySelector('.detail-view-rooms');
 
+      if (backBtn) backBtn.addEventListener('click', closeDetailPanel);
       if (closeBtn) closeBtn.addEventListener('click', closeDetailPanel);
       if (prevBtn) prevBtn.addEventListener('click', () => changeDetailPhoto(-1));
       if (nextBtn) nextBtn.addEventListener('click', () => changeDetailPhoto(1));
@@ -2120,6 +2225,7 @@
     }
 
     function activateFullscreenOverlay(overlay, source) {
+      const fullscreenIntent = consumeFullscreenIntent();
       STATE.fullscreenOverlay = overlay;
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
@@ -2142,17 +2248,35 @@
       triggerMapResize();
       triggerMapResize(getFullscreenResizeSettleDelayMs());
 
-      const defaultPropertyId = resolveDefaultFullscreenPropertyId();
-      if (defaultPropertyId) {
-        selectProperty(defaultPropertyId, 'card', 'fullscreen');
-      } else {
+      if (fullscreenIntent.clearSelection) {
         STATE.selectedPropertyId = '';
         updateCardStates();
         updatePinStates();
         closeDetailPanel();
+      } else if (fullscreenIntent.propertyId) {
+        selectProperty(
+          fullscreenIntent.propertyId,
+          'card',
+          fullscreenIntent.openDetail ? 'fullscreen' : 'inline'
+        );
+        if (!fullscreenIntent.openDetail) {
+          closeDetailPanel();
+        }
+      } else {
+        const defaultPropertyId = resolveDefaultFullscreenPropertyId();
+        if (defaultPropertyId) {
+          selectProperty(defaultPropertyId, 'card', 'fullscreen');
+        } else {
+          STATE.selectedPropertyId = '';
+          updateCardStates();
+          updatePinStates();
+          closeDetailPanel();
+        }
       }
 
-      if (STATE.selectedPropertyId) {
+      if (fullscreenIntent.propertyId) {
+        scrollCardIntoView(fullscreenIntent.propertyId);
+      } else if (STATE.selectedPropertyId) {
         scrollCardIntoView(STATE.selectedPropertyId);
       }
 
@@ -2233,8 +2357,9 @@
       }, PARENT_EXPAND_ACK_TIMEOUT_MS);
     }
 
-    async function openFullscreen() {
+    async function openFullscreen(intent) {
       if (STATE.mode === 'fullscreen') return;
+      STATE.fullscreenIntent = normalizeFullscreenIntent(intent);
       const hostFullscreenWorked = await requestHostDisplayMode('fullscreen');
       if (hostFullscreenWorked) {
         openFullscreenHostMode();
@@ -2405,7 +2530,13 @@
       ensureMapReady()
         .then(() => {
           createMarkers();
-          if (!STATE.selectedPropertyId && STATE.properties.length) {
+          const preserveMobileFullscreenMapOnlyState = (
+            STATE.mode === 'fullscreen'
+            && isMobileViewport()
+            && !STATE.selectedPropertyId
+            && !STATE.detailPropertyId
+          );
+          if (!STATE.selectedPropertyId && STATE.properties.length && !preserveMobileFullscreenMapOnlyState) {
             STATE.selectedPropertyId = String(STATE.properties[0].id || '');
           }
           updateCardStates();
