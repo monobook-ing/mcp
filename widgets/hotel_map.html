@@ -1023,12 +1023,26 @@
         background: transparent;
         scrollbar-width: none;
         -ms-overflow-style: none;
+        touch-action: pan-x;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
       }
 
       .fullscreen-cards .property-card,
       .fullscreen-cards .empty-state {
         pointer-events: auto;
         flex-shrink: 0;
+      }
+
+      .fullscreen-cards .property-card,
+      .fullscreen-cards .property-card * {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .fullscreen-cards img {
+        -webkit-user-drag: none;
+        user-drag: none;
       }
 
       .fullscreen-cards::-webkit-scrollbar {
@@ -1163,6 +1177,12 @@
       parentExpandAckTimeoutId: null,
       parentCollapseFallbackId: null,
       fullscreenDisplayModePollId: null,
+      fullscreenCardGestureCleanup: null,
+      fullscreenCardGestureEl: null,
+      fullscreenCardSwipeStartX: 0,
+      fullscreenCardSwipeStartY: 0,
+      fullscreenCardSwipeTracking: false,
+      fullscreenCardSwipeSuppressUntil: 0,
       fullscreenViewportMaxWidth: 0,
       fullscreenViewportMaxHeight: 0,
     };
@@ -1175,6 +1195,8 @@
     const FULLSCREEN_ENTER_DURATION_MS = 520;
     const HOST_FULLSCREEN_EXIT_DELTA_PX = 100;
     const FULLSCREEN_DISPLAY_MODE_POLL_MS = 350;
+    const FULLSCREEN_CARD_SWIPE_THRESHOLD_PX = 10;
+    const FULLSCREEN_CARD_SWIPE_SUPPRESS_CLICK_MS = 400;
     const FULLSCREEN_WIDGET_NAME = 'hotel_map';
 
     function escapeHtml(value) {
@@ -1478,7 +1500,7 @@
         <article class="property-card property-card--compact ${layoutClass}" data-property-id="${escapeHtml(property.id)}">
           <div class="property-photo-wrap">
             ${photoUrl
-          ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" />`
+          ? `<img class="property-photo" src="${photoUrl}" alt="${escapeHtml(property.name || 'Hotel')}" draggable="false" />`
           : `<div class="property-photo" style="display:grid;place-items:center;font-size:42px;font-weight:900;color:#64748b;">${fallbackLabel}</div>`}
           </div>
           <div class="property-body">
@@ -1486,9 +1508,9 @@
               <p class="inline-from-price">From ${escapeHtml(formatPrice(property.min_price, property.currency_code))}</p>
               <span class="inline-brand-token" aria-hidden="true">
                 ${logoUrl
-          ? `<img src="${logoUrl}" alt="" />`
+          ? `<img src="${logoUrl}" alt="" draggable="false" />`
           : tokenFallbackImageUrl
-            ? `<img src="${tokenFallbackImageUrl}" alt="" />`
+            ? `<img src="${tokenFallbackImageUrl}" alt="" draggable="false" />`
             : `<span class="inline-brand-fallback">${fallbackLabel}</span>`}
               </span>
             </div>
@@ -1560,13 +1582,135 @@
       if (!cards) return;
 
       if (!STATE.properties.length) {
+        unbindFullscreenCardSwipeHandling();
         cards.innerHTML = '<div class="empty-state">No properties found.</div>';
         return;
       }
 
       cards.innerHTML = STATE.properties.map((property) => buildPropertyCard(property, 'fullscreen')).join('');
       bindCardClicks(cards, 'fullscreen');
+      bindFullscreenCardSwipeHandling(cards);
       updateCardStates();
+    }
+
+    function resetFullscreenCardSwipeTracking() {
+      STATE.fullscreenCardSwipeStartX = 0;
+      STATE.fullscreenCardSwipeStartY = 0;
+      STATE.fullscreenCardSwipeTracking = false;
+    }
+
+    function suppressFullscreenCardClick() {
+      STATE.fullscreenCardSwipeSuppressUntil = Date.now() + FULLSCREEN_CARD_SWIPE_SUPPRESS_CLICK_MS;
+    }
+
+    function clearFullscreenCardClickSuppression() {
+      STATE.fullscreenCardSwipeSuppressUntil = 0;
+    }
+
+    function shouldSuppressFullscreenCardClick() {
+      return STATE.mode === 'fullscreen'
+        && isMobileViewport()
+        && Date.now() < STATE.fullscreenCardSwipeSuppressUntil;
+    }
+
+    function unbindFullscreenCardSwipeHandling() {
+      if (typeof STATE.fullscreenCardGestureCleanup === 'function') {
+        STATE.fullscreenCardGestureCleanup();
+      }
+      STATE.fullscreenCardGestureCleanup = null;
+      STATE.fullscreenCardGestureEl = null;
+      resetFullscreenCardSwipeTracking();
+      clearFullscreenCardClickSuppression();
+    }
+
+    function bindFullscreenCardSwipeHandling(container) {
+      if (!container || !isMobileViewport()) {
+        unbindFullscreenCardSwipeHandling();
+        return;
+      }
+      if (STATE.fullscreenCardGestureEl === container && STATE.fullscreenCardGestureCleanup) return;
+
+      unbindFullscreenCardSwipeHandling();
+
+      const beginTracking = (clientX, clientY) => {
+        STATE.fullscreenCardSwipeStartX = Number(clientX) || 0;
+        STATE.fullscreenCardSwipeStartY = Number(clientY) || 0;
+        STATE.fullscreenCardSwipeTracking = true;
+        clearFullscreenCardClickSuppression();
+      };
+
+      const updateTracking = (clientX, clientY) => {
+        if (!STATE.fullscreenCardSwipeTracking) return;
+
+        const deltaX = (Number(clientX) || 0) - STATE.fullscreenCardSwipeStartX;
+        const deltaY = (Number(clientY) || 0) - STATE.fullscreenCardSwipeStartY;
+        if (
+          Math.abs(deltaX) >= FULLSCREEN_CARD_SWIPE_THRESHOLD_PX
+          && Math.abs(deltaX) > Math.abs(deltaY)
+        ) {
+          suppressFullscreenCardClick();
+        }
+      };
+
+      const finishTracking = () => {
+        resetFullscreenCardSwipeTracking();
+      };
+
+      const handleTouchStart = (event) => {
+        const touch = event.touches && event.touches[0];
+        if (!touch) return;
+        beginTracking(touch.clientX, touch.clientY);
+      };
+
+      const handleTouchMove = (event) => {
+        const touch = event.touches && event.touches[0];
+        if (!touch) return;
+        updateTracking(touch.clientX, touch.clientY);
+      };
+
+      const handlePointerDown = (event) => {
+        if (event.pointerType && event.pointerType !== 'touch') return;
+        beginTracking(event.clientX, event.clientY);
+      };
+
+      const handlePointerMove = (event) => {
+        if (event.pointerType && event.pointerType !== 'touch') return;
+        updateTracking(event.clientX, event.clientY);
+      };
+
+      const handleClickCapture = (event) => {
+        const card = event.target && typeof event.target.closest === 'function'
+          ? event.target.closest('.property-card')
+          : null;
+        if (!card || !container.contains(card)) return;
+        if (!shouldSuppressFullscreenCardClick()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        clearFullscreenCardClickSuppression();
+      };
+
+      container.addEventListener('touchstart', handleTouchStart, { passive: true });
+      container.addEventListener('touchmove', handleTouchMove, { passive: true });
+      container.addEventListener('touchend', finishTracking, { passive: true });
+      container.addEventListener('touchcancel', finishTracking, { passive: true });
+      container.addEventListener('pointerdown', handlePointerDown, { passive: true });
+      container.addEventListener('pointermove', handlePointerMove, { passive: true });
+      container.addEventListener('pointerup', finishTracking, { passive: true });
+      container.addEventListener('pointercancel', finishTracking, { passive: true });
+      container.addEventListener('click', handleClickCapture, true);
+
+      STATE.fullscreenCardGestureEl = container;
+      STATE.fullscreenCardGestureCleanup = () => {
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchmove', handleTouchMove);
+        container.removeEventListener('touchend', finishTracking);
+        container.removeEventListener('touchcancel', finishTracking);
+        container.removeEventListener('pointerdown', handlePointerDown);
+        container.removeEventListener('pointermove', handlePointerMove);
+        container.removeEventListener('pointerup', finishTracking);
+        container.removeEventListener('pointercancel', finishTracking);
+        container.removeEventListener('click', handleClickCapture, true);
+      };
     }
 
     function bindCardClicks(container, mode) {
@@ -2469,6 +2613,7 @@
       if (STATE.fullscreenSource !== 'parent' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      unbindFullscreenCardSwipeHandling();
       stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
@@ -2495,6 +2640,7 @@
       if (STATE.fullscreenSource !== 'iframe' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      unbindFullscreenCardSwipeHandling();
       stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
@@ -2521,6 +2667,7 @@
       if (STATE.fullscreenSource !== 'constrained' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      unbindFullscreenCardSwipeHandling();
       stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
@@ -2548,6 +2695,7 @@
       if (STATE.fullscreenSource !== 'host' || !STATE.fullscreenOverlay) return;
       exitBrowserFullscreenIfNeeded();
       clearParentCollapseFallback();
+      unbindFullscreenCardSwipeHandling();
       stopFullscreenDisplayModePoll();
       clearOverlayRequestState();
 
@@ -2845,6 +2993,10 @@
     window.addEventListener('resize', () => {
       maybeCloseEmbeddedFullscreenFromViewport();
       if (STATE.mode === 'fullscreen') {
+        const fullscreenCards = STATE.fullscreenOverlay
+          ? STATE.fullscreenOverlay.querySelector('#fullscreenCards')
+          : null;
+        bindFullscreenCardSwipeHandling(fullscreenCards);
         sendHeight(getFullscreenViewportHeight());
         triggerMapResize();
         return;
