@@ -501,7 +501,7 @@
     .fullscreen-brand-logo {
       /*width: 42px;*/
       height: 42px;
-/*      border-radius: 10px;
+      /*      border-radius: 10px;
       border: 1px solid rgba(15, 23, 42, 0.14);
       background: #fff;*/
       object-fit: contain;
@@ -644,7 +644,7 @@
       appearance: none;
     }
 
-    .bottom-sheet-handle + .handle-bar {
+    .bottom-sheet-handle+.handle-bar {
       width: 44px;
       height: 5px;
       margin: 0 auto 8px;
@@ -1028,6 +1028,10 @@
         -webkit-overflow-scrolling: touch;
       }
 
+      .fullscreen-cards {
+        pointer-events: auto;
+      }
+
       .fullscreen-cards .property-card,
       .fullscreen-cards .empty-state {
         pointer-events: auto;
@@ -1125,6 +1129,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+
       .fullscreen-overlay,
       .fullscreen-overlay-constrained,
       .detail-panel {
