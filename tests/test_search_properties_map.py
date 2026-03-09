@@ -181,6 +181,7 @@ class SearchPropertiesMapTests(unittest.TestCase):
 
         self.assertEqual(result["structuredContent"]["count"], 1)
         self.assertTrue(result["structuredContent"]["relaxed_country_filter"])
+        self.assertNotIn("maps_api_key", result["structuredContent"])
 
     def test_query_and_amenity_filter_parity(self):
         with_hot_tub = make_unit_row(

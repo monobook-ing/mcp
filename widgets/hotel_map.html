@@ -1151,6 +1151,7 @@
 
   <script>
     const currencySymbols = { USD: '$', UAH: '₴', EUR: '€' };
+    const EMBEDDED_MAPS_API_KEY = __HOTEL_MAP_API_KEY__;
 
     const STATE = {
       hydrated: false,
@@ -2797,7 +2798,7 @@
       STATE.checkIn = String(payload.check_in || '');
       STATE.checkOut = String(payload.check_out || '');
       STATE.queryContext = payload.query_context && typeof payload.query_context === 'object' ? payload.query_context : {};
-      STATE.mapsApiKey = String(payload.maps_api_key || '');
+      STATE.mapsApiKey = String(payload.maps_api_key || EMBEDDED_MAPS_API_KEY || '');
 
       renderShell();
       setInlineShellHidden(STATE.mode === 'fullscreen' && (STATE.fullscreenSource === 'parent' || STATE.fullscreenSource === 'host'));

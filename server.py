@@ -44,6 +44,7 @@ mcp = FastMCP(
 
 WIDGETS_DIR = Path(__file__).parent / "widgets"
 RESOURCE_MIME = "text/html;profile=mcp-app"
+HOTEL_MAP_API_KEY_PLACEHOLDER = "__HOTEL_MAP_API_KEY__"
 
 
 @lru_cache(maxsize=None)
@@ -868,7 +869,10 @@ def services_card_resource() -> str:
     app=_build_hotel_map_resource_app_config(),
 )
 def hotel_map_resource() -> str:
-    return load_widget("hotel_map")
+    return load_widget("hotel_map").replace(
+        HOTEL_MAP_API_KEY_PLACEHOLDER,
+        json.dumps(GOOGLE_PLACES_API_KEY or ""),
+    )
 
 
 # ── Tool 1: search_hotels ──────────────────────────────────────────────────
@@ -1198,7 +1202,6 @@ def search_properties_map(
                 "amenity": amenity,
                 "query": query,
             },
-            "maps_api_key": GOOGLE_PLACES_API_KEY,
             "relaxed_country_filter": relaxed_country_filter,
             "coordinates_required": True,
         }
