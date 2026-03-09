@@ -1074,7 +1074,7 @@ def _run_room_candidate_query(
         SELECT r.*,
                p.city AS p_city, p.state AS p_state, p.country AS p_country,
                p.rating AS p_rating, p.image_url AS p_image_url,
-               p.lat AS p_lat, p.lng AS p_lng, p.description AS p_name,
+               p.lat AS p_lat, p.lng AS p_lng, p.name AS p_name,
                p.street AS p_street,
                a.name AS p_account_name,
                a.logo_url AS p_account_logo_url,
