@@ -487,6 +487,14 @@
       background: #fff;
     }
 
+    .fullscreen-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+    }
+
     .fullscreen-brand-block {
       display: flex;
       align-items: center;
@@ -523,8 +531,8 @@
     }
 
     .result-count {
-      font-size: 18px;
-      line-height: 1;
+      font-size: 42px;
+      line-height: 1.05;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: #111827;
@@ -532,20 +540,65 @@
 
     .search-badge {
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       width: fit-content;
+      min-height: 52px;
       border-radius: 999px;
-      padding: 8px 14px;
-      background: rgba(15, 23, 42, 0.06);
+      padding: 8px 12px 8px 20px;
+      background: #fff;
       color: #111827;
-      font-size: 14px;
+      font-size: 20px;
       line-height: 1;
-      font-weight: 700;
+      font-weight: 500;
       letter-spacing: -0.02em;
-      border: 1px solid transparent;
+      border: 1px solid rgba(15, 23, 42, 0.16);
+      cursor: pointer;
+      appearance: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    }
+
+    .search-badge:hover {
+      border-color: rgba(15, 23, 42, 0.28);
+    }
+
+    .search-badge:disabled {
+      cursor: default;
+    }
+
+    .search-badge:disabled:hover {
+      border-color: rgba(15, 23, 42, 0.16);
+    }
+
+    .search-badge:focus-visible {
+      outline: none;
+      border-color: #111827;
+      box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.18);
+    }
+
+    .search-badge.search-badge-active {
+      background: #f8fafc;
+      border-color: rgba(15, 23, 42, 0.34);
     }
 
     .search-badge-label {
       white-space: nowrap;
+    }
+
+    .search-badge-count {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #1d1b5f;
+      color: #fff;
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 500;
+      flex-shrink: 0;
     }
 
     .fullscreen-cards {
@@ -555,7 +608,112 @@
       display: grid;
       gap: 10px;
       align-content: start;
+      grid-row: 2;
+      min-height: 0;
       /*background: #f9fafb;*/
+    }
+
+    .fullscreen-search-details {
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 10px 20px 24px;
+      background: #fff;
+      grid-row: 2;
+      min-height: 0;
+    }
+
+    .fullscreen-search-details-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+      padding: 10px 0 16px;
+    }
+
+    .fullscreen-search-details-title {
+      margin: 0;
+      font-size: 46px;
+      line-height: 1.03;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #111827;
+    }
+
+    .fullscreen-search-details-close {
+      border: none;
+      background: transparent;
+      color: #111827;
+      font-size: 38px;
+      line-height: 1;
+      padding: 0;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .fullscreen-search-details-close:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+
+    .fullscreen-search-details-close:focus-visible {
+      outline: 2px solid rgba(15, 23, 42, 0.4);
+      outline-offset: 2px;
+    }
+
+    .fullscreen-search-details-intro {
+      margin: 18px 0 8px;
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .fullscreen-search-details-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid rgba(15, 23, 42, 0.1);
+    }
+
+    .fullscreen-search-details-row {
+      margin: 0;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+      padding: 14px 0;
+      font-size: 15px;
+      line-height: 1.4;
+      color: #111827;
+    }
+
+    .fullscreen-search-details-label {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .fullscreen-search-details-value {
+      color: #111827;
+      font-weight: 500;
+    }
+
+    .fullscreen-search-details-footnote {
+      margin: 18px 0 0;
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .fullscreen-search-details-empty {
+      margin: 12px 0 0;
+      color: #6b7280;
+      font-size: 15px;
+      line-height: 1.4;
+      font-weight: 500;
     }
 
     .fullscreen-cards .property-card--compact {
@@ -976,6 +1134,10 @@
         display: none;
       }
 
+      .fullscreen-search-details {
+        display: none !important;
+      }
+
       .fullscreen-overlay-constrained .fullscreen-sidebar.collapsed {
         max-height: none;
       }
@@ -1178,6 +1340,7 @@
       fullscreenSource: 'none',
       fullscreenApiActive: false,
       bottomSheetCollapsed: false,
+      fullscreenSidebarView: 'cards',
       overlayRequestId: '',
       overlayAction: '',
       lastOpenInAppHref: '',
@@ -1322,14 +1485,93 @@
       STATE.parentCollapseFallbackId = null;
     }
 
-    function buildSearchBadgeText() {
+    function formatSearchDate(rawDate) {
+      const value = String(rawDate || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
+      const [year, month, day] = value.split('-').map((part) => Number(part));
+      const parsed = new Date(Date.UTC(year, month - 1, day));
+      if (Number.isNaN(parsed.getTime())) return '';
+      return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parsed);
+    }
+
+    function formatSearchDateRange(checkIn, checkOut) {
+      const from = formatSearchDate(checkIn);
+      const to = formatSearchDate(checkOut);
+      if (from && to) return `${from} - ${to}`;
+      return from || to || '';
+    }
+
+    function formatSearchPriceCap(rawValue) {
+      const numeric = Number(rawValue);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return `Up to ${Math.round(numeric)}`;
+      }
+      const text = String(rawValue || '').trim();
+      if (!text) return '';
+      return `Up to ${text}`;
+    }
+
+    function buildSearchDetailRows() {
+      const rows = [];
       const ctx = STATE.queryContext || {};
-      const bits = [];
-      if (ctx.city) bits.push(ctx.city);
-      if (ctx.country) bits.push(ctx.country);
-      if (ctx.unit_type) bits.push(ctx.unit_type);
-      if (ctx.hotel_name) bits.push(ctx.hotel_name);
-      return bits.length ? `Your search: ${bits.join(' · ')}` : 'Your search';
+
+      const city = String(ctx.city || '').trim();
+      const country = String(ctx.country || '').trim();
+      const hotelName = String(ctx.hotel_name || '').trim();
+      const destinationMain = [city, country].filter(Boolean).join(', ');
+      const destination = hotelName
+        ? (destinationMain ? `${destinationMain} · ${hotelName}` : hotelName)
+        : destinationMain;
+      if (destination) {
+        rows.push({ label: 'Destination', value: destination });
+      }
+
+      const dates = formatSearchDateRange(STATE.checkIn, STATE.checkOut);
+      if (dates) {
+        rows.push({ label: 'Dates', value: dates });
+      }
+
+      const guestsValue = ctx.min_guests;
+      const guestsNumber = Number(guestsValue);
+      if (Number.isFinite(guestsNumber) && guestsNumber > 0) {
+        rows.push({
+          label: 'Guests',
+          value: `${guestsNumber} ${guestsNumber === 1 ? 'guest' : 'guests'}`,
+        });
+      } else {
+        const guestsText = String(guestsValue || '').trim();
+        if (guestsText) {
+          rows.push({ label: 'Guests', value: guestsText });
+        }
+      }
+
+      const unitType = String(ctx.unit_type || '').trim();
+      if (unitType) {
+        rows.push({ label: 'Type', value: unitType });
+      }
+
+      const amenity = String(ctx.amenity || '').trim();
+      if (amenity) {
+        rows.push({ label: 'Experience', value: amenity });
+      }
+
+      const query = String(ctx.query || '').trim();
+      if (query) {
+        rows.push({ label: 'Query', value: query });
+      }
+
+      const priceCap = formatSearchPriceCap(ctx.max_price);
+      if (priceCap) {
+        rows.push({ label: 'Price cap', value: priceCap });
+      }
+
+      return rows;
+    }
+
+    function buildSearchBadgeText(rows) {
+      const detailRows = Array.isArray(rows) ? rows : buildSearchDetailRows();
+      if (!detailRows.length) return 'Your search';
+      return `Your search: ${detailRows.map((item) => `${item.label} ${item.value}`).join(' · ')}`;
     }
 
     function buildTopHeaderTitleFallback() {
@@ -1570,27 +1812,121 @@
       updateCardStates();
     }
 
+    function isDesktopFullscreenSidebarMode() {
+      return STATE.mode === 'fullscreen' && !isMobileViewport();
+    }
+
+    function applyFullscreenSidebarView() {
+      if (!STATE.fullscreenOverlay) return;
+
+      const cards = STATE.fullscreenOverlay.querySelector('#fullscreenCards');
+      const searchDetails = STATE.fullscreenOverlay.querySelector('#fullscreenSearchDetails');
+      const resultCount = STATE.fullscreenOverlay.querySelector('#fullscreenResultCount');
+      const searchBadge = STATE.fullscreenOverlay.querySelector('#fullscreenSearchBadge');
+      const desktopMode = isDesktopFullscreenSidebarMode();
+
+      if (!desktopMode && STATE.fullscreenSidebarView !== 'cards') {
+        STATE.fullscreenSidebarView = 'cards';
+      }
+
+      const showSearchDetails = desktopMode && STATE.fullscreenSidebarView === 'search';
+      if (cards) cards.classList.toggle('hidden', showSearchDetails);
+      if (searchDetails) searchDetails.classList.toggle('hidden', !showSearchDetails);
+      if (resultCount) resultCount.classList.toggle('hidden', showSearchDetails);
+      if (searchBadge) {
+        searchBadge.classList.toggle('search-badge-active', showSearchDetails);
+        searchBadge.setAttribute('aria-expanded', showSearchDetails ? 'true' : 'false');
+      }
+    }
+
+    function setFullscreenSidebarView(nextView) {
+      if (!STATE.fullscreenOverlay || STATE.mode !== 'fullscreen') return;
+      const normalized = nextView === 'search' ? 'search' : 'cards';
+      if (normalized === 'search' && !isDesktopFullscreenSidebarMode()) return;
+      STATE.fullscreenSidebarView = normalized;
+      applyFullscreenSidebarView();
+      sendHeight(getFullscreenViewportHeight());
+    }
+
+    function renderFullscreenSearchDetails(rows) {
+      if (!STATE.fullscreenOverlay) return;
+      const container = STATE.fullscreenOverlay.querySelector('#fullscreenSearchDetails');
+      if (!container) return;
+
+      const detailRows = Array.isArray(rows) ? rows : [];
+      const listHtml = detailRows.length
+        ? `
+          <ul class="fullscreen-search-details-list">
+            ${detailRows.map((row) => `
+              <li class="fullscreen-search-details-row">
+                <span class="fullscreen-search-details-label">${escapeHtml(row.label)}:</span>
+                <span class="fullscreen-search-details-value"> ${escapeHtml(row.value)}</span>
+              </li>
+            `).join('')}
+          </ul>
+        `
+        : '<p class="fullscreen-search-details-empty">No search criteria available for this search.</p>';
+
+      container.innerHTML = `
+        <div class="fullscreen-search-details-header">
+          <h2 class="fullscreen-search-details-title">Your search</h2>
+          <button
+            id="fullscreenSearchDetailsClose"
+            class="fullscreen-search-details-close"
+            type="button"
+            aria-label="Close search details"
+          >✕</button>
+        </div>
+        <p class="fullscreen-search-details-intro">Here are the criteria currently applied to your stay search</p>
+        ${listHtml}
+        <p class="fullscreen-search-details-footnote">To update these details, tell ALL Accor what you'd like to change in the chat below.</p>
+      `;
+
+      const closeBtn = container.querySelector('#fullscreenSearchDetailsClose');
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          setFullscreenSidebarView('cards');
+        };
+      }
+    }
+
     function renderFullscreenCards() {
       if (!STATE.fullscreenOverlay) return;
 
       const cards = STATE.fullscreenOverlay.querySelector('#fullscreenCards');
       const resultCount = STATE.fullscreenOverlay.querySelector('#fullscreenResultCount');
       const searchBadge = STATE.fullscreenOverlay.querySelector('#fullscreenSearchBadge');
+      const searchBadgeCount = STATE.fullscreenOverlay.querySelector('#fullscreenSearchCount');
       const accountContext = resolveFullscreenAccountContext();
+      const detailRows = buildSearchDetailRows();
+      const searchBadgeText = buildSearchBadgeText(detailRows);
+      const criteriaCount = detailRows.length;
 
       if (resultCount) resultCount.textContent = `${STATE.properties.length} result${STATE.properties.length === 1 ? '' : 's'}`;
       if (searchBadge) {
-        searchBadge.textContent = 'Your search';
-        searchBadge.setAttribute('title', buildSearchBadgeText());
-        searchBadge.setAttribute('aria-label', buildSearchBadgeText());
+        searchBadge.setAttribute('title', searchBadgeText);
+        searchBadge.setAttribute('aria-label', searchBadgeText);
+        searchBadge.disabled = !isDesktopFullscreenSidebarMode();
+        searchBadge.onclick = () => {
+          setFullscreenSidebarView('search');
+        };
       }
+      if (searchBadgeCount) {
+        searchBadgeCount.textContent = String(criteriaCount);
+        searchBadgeCount.classList.toggle('hidden', criteriaCount <= 0);
+      }
+      renderFullscreenSearchDetails(detailRows);
       renderFullscreenHeader(accountContext);
 
-      if (!cards) return;
+      if (!cards) {
+        applyFullscreenSidebarView();
+        return;
+      }
 
       if (!STATE.properties.length) {
         unbindFullscreenCardSwipeHandling();
         cards.innerHTML = '<div class="empty-state">No properties found.</div>';
+        applyFullscreenSidebarView();
         return;
       }
 
@@ -1598,6 +1934,7 @@
       bindCardClicks(cards, 'fullscreen');
       bindFullscreenCardSwipeHandling(cards);
       updateCardStates();
+      applyFullscreenSidebarView();
     }
 
     function resetFullscreenCardSwipeTracking() {
@@ -2372,13 +2709,32 @@
       overlay.innerHTML = `
         <aside class="fullscreen-sidebar">
           <div class="fullscreen-header">
-            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
-              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+            <div class="fullscreen-header-top">
+              <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+                <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+                <span id="fullscreenBrandName" class="fullscreen-brand-name"></span>
+              </div>
+              <button
+                id="fullscreenSearchBadge"
+                class="search-badge"
+                type="button"
+                aria-controls="fullscreenSearchDetails"
+                aria-expanded="false"
+                aria-label="Your search"
+              >
+                <span class="search-badge-label">Your search</span>
+                <span id="fullscreenSearchCount" class="search-badge-count hidden">0</span>
+              </button>
             </div>
-            <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
           </div>
           <div id="fullscreenCards" class="fullscreen-cards"></div>
+          <section
+            id="fullscreenSearchDetails"
+            class="fullscreen-search-details hidden"
+            role="region"
+            aria-label="Search details"
+          ></section>
         </aside>
         <section class="fullscreen-map-pane">
           <div id="fullscreenMapSlot" class="fullscreen-map-slot"></div>
@@ -2401,13 +2757,32 @@
           <button id="bottomSheetHandle" class="bottom-sheet-handle" type="button" aria-label="Toggle property list"></button>
           <span class="handle-bar"></span>
           <div class="fullscreen-header">
-            <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
-              <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+            <div class="fullscreen-header-top">
+              <div id="fullscreenBrandBlock" class="fullscreen-brand-block hidden">
+                <img id="fullscreenBrandLogo" class="fullscreen-brand-logo hidden" alt="" />
+                <span id="fullscreenBrandName" class="fullscreen-brand-name"></span>
+              </div>
+              <button
+                id="fullscreenSearchBadge"
+                class="search-badge"
+                type="button"
+                aria-controls="fullscreenSearchDetails"
+                aria-expanded="false"
+                aria-label="Your search"
+              >
+                <span class="search-badge-label">Your search</span>
+                <span id="fullscreenSearchCount" class="search-badge-count hidden">0</span>
+              </button>
             </div>
-            <span id="fullscreenSearchBadge" class="search-badge"></span>
             <div id="fullscreenResultCount" class="result-count"></div>
           </div>
           <div id="fullscreenCards" class="fullscreen-cards"></div>
+          <section
+            id="fullscreenSearchDetails"
+            class="fullscreen-search-details hidden"
+            role="region"
+            aria-label="Search details"
+          ></section>
         </aside>
       `;
       return overlay;
@@ -2474,6 +2849,7 @@
       STATE.mode = 'fullscreen';
       STATE.fullscreenSource = source;
       STATE.bottomSheetCollapsed = false;
+      STATE.fullscreenSidebarView = 'cards';
       clearParentCollapseFallback();
       if (source === 'host' || source === 'parent') {
         resetFullscreenViewportBounds();
@@ -2634,6 +3010,7 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      STATE.fullscreenSidebarView = 'cards';
       resetFullscreenViewportBounds();
       setInlineShellHidden(false);
       restoreInlineSelectionAfterFullscreenClose();
@@ -2661,6 +3038,7 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      STATE.fullscreenSidebarView = 'cards';
       resetFullscreenViewportBounds();
       setInlineShellHidden(false);
       restoreInlineSelectionAfterFullscreenClose();
@@ -2689,6 +3067,7 @@
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
       STATE.bottomSheetCollapsed = false;
+      STATE.fullscreenSidebarView = 'cards';
       resetFullscreenViewportBounds();
       setInlineShellHidden(false);
       restoreInlineSelectionAfterFullscreenClose();
@@ -2716,6 +3095,7 @@
       STATE.fullscreenOverlay = null;
       STATE.mode = 'inline';
       STATE.fullscreenSource = 'none';
+      STATE.fullscreenSidebarView = 'cards';
       resetFullscreenViewportBounds();
       setInlineShellHidden(false);
       restoreInlineSelectionAfterFullscreenClose();
@@ -2992,6 +3372,9 @@
 
     const resizeObserver = new ResizeObserver(() => {
       maybeCloseEmbeddedFullscreenFromViewport();
+      if (STATE.mode === 'fullscreen') {
+        applyFullscreenSidebarView();
+      }
       sendHeight(STATE.mode === 'fullscreen' ? getFullscreenViewportHeight() : undefined);
     });
     resizeObserver.observe(document.body);
@@ -3004,6 +3387,10 @@
           ? STATE.fullscreenOverlay.querySelector('#fullscreenCards')
           : null;
         bindFullscreenCardSwipeHandling(fullscreenCards);
+        if (isMobileViewport() && STATE.fullscreenSidebarView === 'search') {
+          STATE.fullscreenSidebarView = 'cards';
+        }
+        applyFullscreenSidebarView();
         sendHeight(getFullscreenViewportHeight());
         triggerMapResize();
         return;
